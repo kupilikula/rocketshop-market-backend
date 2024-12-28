@@ -21,7 +21,7 @@ jobs:
             mkdir market-backend
             cd market-backend
             echo 'Cloning git repo'
-            git clone git@github.com:username/projectname .
+            git clone git@github.com:PocketShopIndia/market-backend.git .
             echo 'Running npm install'
             npm install
             echo 'Starting app.'

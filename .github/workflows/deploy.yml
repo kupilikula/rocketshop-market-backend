@@ -1,0 +1,29 @@
+name: Deploy to DigitalOcean Droplet
+'on':
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to DigitalOcean Droplet
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{secrets.DO_BACKEND_DROPLET_HOST}}
+          username: ${{secrets.DO_BACKEND_DROPLET_USERNAME}}
+          key: ${{secrets.DO_BACKEND_DROPLET_SSH_KEY}}
+          script: |
+            export NVM_DIR=~/.nvm
+            source ~/.nvm/nvm.sh
+            rm -rf market-backend       
+            mkdir market-backend
+            cd market-backend
+            echo 'Cloning git repo'
+            git clone git@github.com:username/projectname .
+            echo 'Running npm install'
+            npm install
+            echo 'Starting app.'
+            npm run start
+            echo 'Deployment to digital ocean finished'

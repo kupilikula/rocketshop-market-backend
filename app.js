@@ -2,7 +2,7 @@
 
 const path = require('node:path')
 const AutoLoad = require('@fastify/autoload')
-import cors from '@fastify/cors'
+const cors = require('@fastify/cors')
 
 
 // Pass --options via CLI arguments in command to enable these options.

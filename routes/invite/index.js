@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 
-const emailListFile = './emailList.txt'; // Replace with the actual path to your file
+const emailListFile = '~/emailList.txt'; // Replace with the actual path to your file
 
 
 module.exports = async function (fastify, opts) {

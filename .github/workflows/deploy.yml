@@ -17,6 +17,7 @@ jobs:
           script: |
             export NVM_DIR=~/.nvm
             source ~/.nvm/nvm.sh
+            pm2 delete marketApi
             rm -rf market-backend       
             mkdir market-backend
             cd market-backend

@@ -12,7 +12,7 @@ module.exports = async function (fastify, opts) {
   // Place here your custom code!
 
   fastify.register(cors, {
-    origin: 'http://localhost:5173',
+    origin: '*',
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'], // Headers allowed
     credentials: true // Allow cookies and Authorization headers

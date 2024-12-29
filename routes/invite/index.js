@@ -10,9 +10,8 @@ module.exports = async function (fastify, opts) {
     return 'App is running.'
   });
   fastify.post('/', async function (request, reply) {
-    console.log('request.body:', request.body);
     const writeStream = fs.createWriteStream(emailListFile, { flags: 'a' });
-    writeStream.write(request.body.email + '\\n', (err) => {
+    writeStream.write(request.body.email + '\n', (err) => {
       if (err) {
         console.error('Error appending to file:', err);
         return;

@@ -25,5 +25,5 @@ jobs:
             echo 'Running npm install'
             npm install
             echo 'Starting app.'
-            npm run start
+            pm2 start app.js --name marketApi
             echo 'Deployment to digital ocean finished'

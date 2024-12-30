@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 const { Client } = require('@elastic/elasticsearch');
 
@@ -11,20 +11,28 @@ module.exports = async function (fastify, opts) {
     const { query, from = 0, size = 20 } = request.query;
 
     try {
+      // Perform a search across products and stores
       const response = await esClient.search({
         index: ['products', 'stores'],
         body: {
           query: {
-            multi_match: {
-              query,
-              fields: [
-                'productName^2',
-                'description',
-                'productTags^2', // Include product tags
-                'attributes.value^2', // Include only attribute values
-                'storeName^2',
-                'storeDescription',
-                  'storeTags^1.5'
+            bool: {
+              must: [
+                { match: { isActive: true } }, // Ensure only active documents are retrieved
+                {
+                  multi_match: {
+                    query,
+                    fields: [
+                      'productName^2',
+                      'description',
+                      'productTags^2',
+                      'attributes.value^2',
+                      'storeName^2',
+                      'storeDescription',
+                      'storeTags^1.5',
+                    ],
+                  },
+                },
               ],
             },
           },
@@ -33,6 +41,7 @@ module.exports = async function (fastify, opts) {
         },
       });
 
+      // Extract and return the combined results
       const results = response.hits.hits.map((hit) => hit._source);
       return reply.send(results);
     } catch (err) {
@@ -40,4 +49,4 @@ module.exports = async function (fastify, opts) {
       return reply.status(500).send({ error: 'Failed to fetch search results.' });
     }
   });
-}
+};

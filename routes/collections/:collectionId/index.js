@@ -7,20 +7,29 @@ module.exports = async function (fastify, opts) {
     const { collectionId } = request.params;
 
     try {
-      const collection = await knex('collections').where('collectionId', collectionId).first();
+      // Fetch collection details, ensuring the collection is active
+      const collection = await knex('collections')
+          .where({ collectionId, isActive: true })
+          .first();
+
       if (!collection) {
-        return reply.status(404).send({ error: 'Collection not found.' });
+        return reply.status(404).send({ error: 'Collection not found or inactive.' });
       }
 
+      // Fetch active products within the collection
       const products = await knex('products')
-          .join('productCollections', 'products.productId', 'productCollections.productId')
-          .where('productCollections.collectionId', collectionId)
-          .orderBy('productCollections.displayOrder', 'asc');
+          .where({ isActive: true })
+          .andWhereRaw('? = ANY(collectionIds)', [collectionId]) // Match collectionId in collectionIds array
+          .orderBy('displayOrder', 'asc');
 
-      return reply.send({ collection, products });
-    } catch (err) {
-      request.log.error(err);
-      return reply.status(500).send({ error: 'Failed to fetch collection data.' });
+      products.forEach(product => {
+        product.mediaItems = JSON.parse(product.mediaItems || '[]');
+      });
+
+      return reply.send({ ...collection, products });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Failed to fetch products for the collection.' });
     }
   });
 }

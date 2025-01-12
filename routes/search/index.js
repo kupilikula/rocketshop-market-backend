@@ -42,8 +42,9 @@ module.exports = async function (fastify, opts) {
           .orderBy('created_at', 'desc') // Prioritize newer products
           .limit(parseInt(size, 10))
           .offset(parseInt(from, 10));
-
+      console.log('line45, productsQuery:', productsQuery.toString());
       const results = await productsQuery;
+      console.log('line47, results:', results);
 
       return reply.send(results);
     } catch (err) {

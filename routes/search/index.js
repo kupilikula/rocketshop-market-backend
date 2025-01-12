@@ -7,7 +7,7 @@ module.exports = async function (fastify, opts) {
         const { query: searchTerm, from = 0, size = 20 } = request.query;
 
         try {
-            // Construct the query for products and stores
+            // Fetch products
             const productsQuery = knex
                 .select('*')
                 .from('products')
@@ -36,6 +36,7 @@ module.exports = async function (fastify, opts) {
                 .limit(parseInt(size, 10))
                 .offset(parseInt(from, 10));
 
+            // Fetch independent stores
             const storesQuery = knex
                 .select('*')
                 .from('stores')
@@ -58,12 +59,36 @@ module.exports = async function (fastify, opts) {
                 .limit(parseInt(size, 10))
                 .offset(parseInt(from, 10));
 
+            const [products, independentStores] = await Promise.all([productsQuery, storesQuery]);
 
-            const [products, stores] = await Promise.all([productsQuery, storesQuery]);
-            console.log('line47, products:', products);
-            console.log('line47, stores:', stores);
+            // Get storeId counts from product results
+            const storeCounts = products.reduce((acc, product) => {
+                acc[product.storeId] = (acc[product.storeId] || 0) + 1;
+                return acc;
+            }, {});
 
-            return reply.send({products, stores});
+            // Get top storeIds from product results
+            const topStoreIds = Object.entries(storeCounts)
+                .sort(([, a], [, b]) => b - a) // Sort by occurrence count
+                .slice(0, 5) // Take top 5 stores (adjust as needed)
+                .map(([storeId]) => storeId);
+
+            // Fetch details for top stores
+            const topStoresQuery = knex
+                .select('*')
+                .from('stores')
+                .whereIn('storeId', topStoreIds);
+
+            const topStores = await topStoresQuery;
+
+            // Combine top stores with independent stores, ensuring no duplicates
+            const storeSet = new Set(topStores.map(store => store.storeId));
+            const combinedStores = [
+                ...topStores,
+                ...independentStores.filter(store => !storeSet.has(store.storeId))
+            ];
+
+            return reply.send({ products, stores: combinedStores });
         } catch (err) {
             request.log.error(err);
             return reply.status(500).send({ error: 'Failed to fetch search results.' });

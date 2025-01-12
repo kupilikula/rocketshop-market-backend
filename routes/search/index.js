@@ -9,14 +9,7 @@ module.exports = async function (fastify, opts) {
         try {
             // Construct the query for products and stores
             const productsQuery = knex
-                .select(
-                    'productId as id',
-                    'productName as name',
-                    'description',
-                    'productTags',
-                    'attributes',
-                    'created_at'
-                )
+                .select('*')
                 .from('products')
                 .where('isActive', true)
                 .andWhereRaw(
@@ -44,13 +37,7 @@ module.exports = async function (fastify, opts) {
                 .offset(parseInt(from, 10));
 
             const storesQuery = knex
-                .select(
-                    'storeId as id',
-                    'storeName as name',
-                    'storeDescription as description',
-                    'storeTags',
-                    'created_at'
-                )
+                .select('*')
                 .from('stores')
                 .andWhereRaw(
                     `

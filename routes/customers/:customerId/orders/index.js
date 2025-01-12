@@ -1,6 +1,6 @@
 'use strict'
 
-const knex = require("knex");
+const knex = require("@database/knexInstance");
 
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {

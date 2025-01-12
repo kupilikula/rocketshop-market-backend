@@ -54,7 +54,7 @@ module.exports = async function (fastify, opts) {
         query.orWhereRaw(
             `EXISTS (
             SELECT 1
-            FROM jsonb_array_elements_text("p.productTags") AS tag
+            FROM jsonb_array_elements_text(p."productTags") AS tag
             WHERE tag = ANY(?)
           )`,
             [interests]

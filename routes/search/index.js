@@ -10,12 +10,7 @@ module.exports = async function (fastify, opts) {
             // Construct the query for products and stores
             const productsQuery = knex
                 .select(
-                    'productId as id',
-                    'productName as name',
-                    'description',
-                    'productTags',
-                    'attributes',
-                    'created_at',
+                    '*',
                     knex.raw(`'product' as type`)
                 )
                 .from('products')
@@ -43,12 +38,8 @@ module.exports = async function (fastify, opts) {
                 .unionAll(
                     knex
                         .select(
-                            'storeId as id',
-                            'storeName as name',
-                            'storeDescription as description',
-                            'storeTags',
+                            '*',
                             knex.raw('NULL as attributes'),
-                            'created_at',
                             knex.raw(`'store' as type`)
                         )
                         .from('stores')

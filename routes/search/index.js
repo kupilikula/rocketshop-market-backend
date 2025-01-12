@@ -52,7 +52,7 @@ module.exports = async function (fastify, opts) {
                         [searchTerm]
                     )
             )
-            .orderBy('"created_at"', 'desc')
+            .orderBy('created_at', 'desc')
             .limit(parseInt(size, 10))
             .offset(parseInt(from, 10));
       console.log('line45, productsQuery:', productsQuery.toString());

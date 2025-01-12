@@ -1,5 +1,7 @@
 'use strict';
 
+const knex = require("@database/knexInstance");
+
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
     const { from = 0, size = 20, lastFetchedAt } = request.query;
@@ -8,14 +10,14 @@ module.exports = async function (fastify, opts) {
       const customerId = request.user.customerId;
 
       // Fetch followedStoreIds from the database
-      const followedStores = await fastify.knex('customer_followed_stores')
+      const followedStores = await knex('customer_followed_stores')
           .select('storeId')
           .where('customerId', customerId);
 
       const followedStoreIds = followedStores.map((row) => row.storeId);
 
       // Compute interests based on recent purchases or viewed products
-      const interestsResult = await fastify.knex.raw(`
+      const interestsResult = await knex.raw(`
         SELECT DISTINCT UNNEST("productTags") AS tag
         FROM products
         JOIN orders ON products."productId" = orders."productId"
@@ -27,7 +29,7 @@ module.exports = async function (fastify, opts) {
       const interests = interestsResult.rows.map((row) => row.tag);
 
       // Build the feed query
-      let query = fastify.knex('products')
+      let query = knex('products')
           .select('*')
           .where('isActive', true);
 

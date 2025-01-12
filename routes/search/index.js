@@ -1,12 +1,14 @@
 'use strict';
 
+const knex = require("@database/knexInstance");
+
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
     const { query: searchTerm, from = 0, size = 20 } = request.query;
 
     try {
       // Construct the query for products and stores
-      const productsQuery = fastify.knex('products')
+      const productsQuery = knex('products')
           .select(
               'productId',
               'productName',
@@ -14,7 +16,7 @@ module.exports = async function (fastify, opts) {
               'productTags',
               'attributes',
               'creationTime',
-              fastify.knex.raw(`'product' as type`) // Add a type field to differentiate results
+              knex.raw(`'product' as type`) // Add a type field to differentiate results
           )
           .where('isActive', true) // Ensure only active products are retrieved
           .andWhereRaw(
@@ -27,9 +29,9 @@ module.exports = async function (fastify, opts) {
                 'storeName as name',
                 'storeDescription as description',
                 'storeTags',
-                fastify.knex.raw(`NULL as attributes`),
-                fastify.knex.raw(`NULL as creationTime`),
-                fastify.knex.raw(`'store' as type`) // Add a type field for differentiation
+                knex.raw(`NULL as attributes`),
+                knex.raw(`NULL as creationTime`),
+                knex.raw(`'store' as type`) // Add a type field for differentiation
             )
                 .from('stores')
                 .whereRaw(

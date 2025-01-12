@@ -34,13 +34,19 @@ module.exports = async function (fastify, opts) {
       const interests = interestsResult.rows.map((row) => row.tag);
 
       // Build the feed query
-      let query = knex('products')
-          .select('*')
-          .where('isActive', true);
+      let query = knex('products as p')
+          .select(
+              'p.*', // Select all product fields
+              's.storeName',
+              's.storeLogoImage',
+              's.storeBrandColor'
+          )
+          .join('stores as s', 'p.storeId', 's.storeId') // Join products with stores
+          .where('p.isActive', true);
 
       // Filter for followed stores
       if (followedStoreIds.length > 0) {
-        query.orWhereIn('storeId', followedStoreIds);
+        query.orWhereIn('p.storeId', followedStoreIds);
       }
 
       // Boost relevance for interests
@@ -48,7 +54,7 @@ module.exports = async function (fastify, opts) {
         query.orWhereRaw(
             `EXISTS (
             SELECT 1
-            FROM jsonb_array_elements_text("productTags") AS tag
+            FROM jsonb_array_elements_text("p.productTags") AS tag
             WHERE tag = ANY(?)
           )`,
             [interests]
@@ -57,18 +63,18 @@ module.exports = async function (fastify, opts) {
 
       // Filter for lastFetchedAt if provided
       if (lastFetchedAt) {
-        query.andWhere('updated_at', '>', lastFetchedAt);
+        query.andWhere('p.updated_at', '>', lastFetchedAt);
       }
 
       // Apply sorting and pagination
       query
-          .orderBy('created_at', 'desc')
+          .orderBy('p.created_at', 'desc')
           .limit(parseInt(size, 10))
           .offset(parseInt(from, 10));
 
-      const products = await query;
+      const productsWithStores = await query;
 
-      return reply.send(products);
+      return reply.send(productsWithStores);
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Failed to fetch feed data.' });

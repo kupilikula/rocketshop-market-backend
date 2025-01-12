@@ -45,7 +45,14 @@ module.exports = async function (fastify, opts) {
 
       // Boost relevance for interests
       if (interests.length > 0) {
-        query.orWhereRaw('"productTags" && ?', [interests]);
+        query.orWhereRaw(
+            `EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text("productTags") AS tag
+            WHERE tag = ANY(?)
+          )`,
+            [interests]
+        );
       }
 
       // Filter for lastFetchedAt if provided
@@ -54,7 +61,8 @@ module.exports = async function (fastify, opts) {
       }
 
       // Apply sorting and pagination
-      query.orderBy('created_at', 'desc')
+      query
+          .orderBy('created_at', 'desc')
           .limit(parseInt(size, 10))
           .offset(parseInt(from, 10));
 

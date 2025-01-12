@@ -18,11 +18,14 @@ module.exports = async function (fastify, opts) {
 
       // Compute interests based on recent purchases or viewed products
       const interestsResult = await knex.raw(`
-        SELECT DISTINCT UNNEST("productTags") AS tag
-        FROM "products"
-               JOIN "order_items" ON "products"."productId" = "order_items"."productId"
-               JOIN "orders" ON "orders"."orderId" = "order_items"."orderId"
-        WHERE "orders"."customerId" = ?
+        SELECT DISTINCT tag
+        FROM (
+               SELECT jsonb_array_elements_text("productTags") AS tag
+               FROM "products"
+                      JOIN "order_items" ON "products"."productId" = "order_items"."productId"
+                      JOIN "orders" ON "orders"."orderId" = "order_items"."orderId"
+               WHERE "orders"."customerId" = ?
+             ) AS tags
         GROUP BY tag
         ORDER BY COUNT(tag) DESC
           LIMIT 10

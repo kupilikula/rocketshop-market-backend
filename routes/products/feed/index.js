@@ -5,7 +5,7 @@ const knex = require("@database/knexInstance");
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
     const { from = 0, size = 20, lastFetchedAt } = request.query;
-
+    console.log('feed query, from:', from, ', size:', size, ' , lastFetchedAt:', lastFetchedAt);
     try {
       const customerId = request.user.customerId;
 
@@ -67,8 +67,10 @@ module.exports = async function (fastify, opts) {
       }
 
       // Apply sorting and pagination
-      query
-          .orderBy('p.created_at', 'desc')
+      query.orderBy([
+        { column: 'p.created_at', order: 'desc' },
+        { column: 'p.productId', order: 'asc' } // Stable secondary sort
+          ])
           .limit(parseInt(size, 10))
           .offset(parseInt(from, 10));
 

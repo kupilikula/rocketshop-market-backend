@@ -18,7 +18,7 @@ module.exports = async function (fastify, opts) {
 
       // Compute interests based on recent purchases or viewed products
       const interestsResult = await knex.raw(`
-        SELECT DISTINCT tag
+        SELECT tag
         FROM (
                SELECT jsonb_array_elements_text("productTags") AS tag
                FROM "products"

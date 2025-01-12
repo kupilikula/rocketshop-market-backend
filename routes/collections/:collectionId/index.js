@@ -19,7 +19,7 @@ module.exports = async function (fastify, opts) {
       // Fetch active products within the collection
       const products = await knex('products')
           .where({ isActive: true })
-          .andWhereRaw('? = ANY(collectionIds)', [collectionId]) // Match collectionId in collectionIds array
+          .andWhereRaw('? = ANY("collectionIds")', [collectionId]) // Match collectionId in collectionIds array
           .orderBy('displayOrder', 'asc');
 
       products.forEach(product => {

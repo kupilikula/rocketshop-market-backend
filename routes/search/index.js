@@ -38,7 +38,7 @@ module.exports = async function (fastify, opts) {
                         'storeDescription as description',
                         'storeTags',
                         knex.raw('NULL as attributes'),
-                        '"created_at"',
+                        'created_at',
                         knex.raw(`'store' as type`)
                     )
                     .from('stores')

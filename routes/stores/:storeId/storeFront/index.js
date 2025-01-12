@@ -23,17 +23,18 @@ module.exports = async function (fastify, opts) {
 
       for (const collection of collections) {
         // Fetch active products for each collection using productCollections table
-        const productIds = await knex('productCollections')
-            .where({ collectionId: collection.collectionId })
-            .pluck('productId');
-
-        const products = await knex('products')
-            .whereIn('productId', productIds)
-            .andWhere({ storeId, isActive: true })
-            .orderBy('displayOrder', 'asc')
+        const productData = await knex('productCollections')
+            .join('products', 'productCollections.productId', 'products.productId')
+            .select(
+                'products.*',
+                'productCollections.displayOrder'
+            )
+            .where('productCollections.collectionId', collection.collectionId)
+            .andWhere('products.isActive', true)
+            .orderBy('productCollections.displayOrder', 'asc')
             .limit(collection.storeFrontDisplayNumberOfItems);
 
-        collection.products = products;
+        collection.products = productData;
       }
 
       return reply.send({ ...store, collections });

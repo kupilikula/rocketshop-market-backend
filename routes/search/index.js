@@ -19,7 +19,7 @@ module.exports = async function (fastify, opts) {
                 knex.raw(`'product' as type`)
             )
             .from('products')
-            .where('"isActive"', true)
+            .where('isActive', true)
             .andWhereRaw(
                 `to_tsvector(
       'english',

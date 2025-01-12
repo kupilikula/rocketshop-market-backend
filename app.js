@@ -16,7 +16,24 @@ module.exports = async function (fastify, opts) {
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'], // Headers allowed
     credentials: true // Allow cookies and Authorization headers
-  })
+  });
+
+  fastify.decorateRequest('user', null); // Decorate the request with a user property
+
+  fastify.addHook('onRequest', async (request, reply) => {
+    // const token = request.headers.authorization?.split(' ')[1]; // Extract token from Bearer header
+    // if (!token) {
+    //   return reply.status(401).send({ error: 'Unauthorized' });
+    // }
+
+    // try {
+    // const user = jwt.verify(token, JWT_SECRET); // Verify the token
+    const customerId = request.headers.authorization;
+    request.user = {customerId: customerId}; // Attach the user to the request object
+    // } catch (err) {
+    //   return reply.status(401).send({ error: 'Invalid token' });
+    // }
+  });
 
   // Do not touch the following lines
 

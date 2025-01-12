@@ -22,17 +22,16 @@ module.exports = async function (fastify, opts) {
           .orderBy('displayOrder', 'asc');
 
       for (const collection of collections) {
-        // Fetch active products for each collection
+        // Fetch active products for each collection using productCollections table
+        const productIds = await knex('productCollections')
+            .where({ collectionId: collection.collectionId })
+            .pluck('productId');
+
         const products = await knex('products')
-            .where({ storeId, isActive: true })
-            .andWhereRaw('? = ANY(collectionIds)', [collection.collectionId]) // Match collectionId in collectionIds array
+            .whereIn('productId', productIds)
+            .andWhere({ storeId, isActive: true })
             .orderBy('displayOrder', 'asc')
             .limit(collection.storeFrontDisplayNumberOfItems);
-
-        // Parse mediaItems from JSON
-        products.forEach(product => {
-          product.mediaItems = JSON.parse(product.mediaItems || '[]');
-        });
 
         collection.products = products;
       }

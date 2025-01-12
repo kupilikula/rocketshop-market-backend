@@ -73,6 +73,7 @@ module.exports = async function (fastify, opts) {
           .offset(parseInt(from, 10));
 
       const productsWithStores = await query;
+      console.log('line76, p:', productsWithStores);
 
       return reply.send(productsWithStores);
     } catch (err) {

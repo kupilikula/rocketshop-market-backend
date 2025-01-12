@@ -15,7 +15,7 @@ module.exports = async function (fastify, opts) {
               'description',
               'productTags',
               'attributes',
-              'creationTime',
+              'created_at',
               knex.raw(`'product' as type`) // Add a type field to differentiate results
           )
           .where('isActive', true) // Ensure only active products are retrieved

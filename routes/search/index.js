@@ -25,8 +25,8 @@ module.exports = async function (fastify, opts) {
       'english',
       coalesce("productName", '') || ' ' ||
       coalesce("description", '') || ' ' ||
-      array_to_string("productTags", ' ') || ' ' ||
-      array_to_string("attributes", ' ')
+      (SELECT string_agg(tag, ' ') FROM jsonb_array_elements_text("productTags") AS tag) || ' ' ||
+      (SELECT string_agg(attr->>'value', ' ') FROM jsonb_array_elements("attributes") AS attr)
     ) @@ to_tsquery(?)`,
                 [searchTerm]
             )
@@ -47,7 +47,7 @@ module.exports = async function (fastify, opts) {
           'english',
           coalesce("storeName", '') || ' ' ||
           coalesce("storeDescription", '') || ' ' ||
-          array_to_string("storeTags", ' ')
+          (SELECT string_agg(tag, ' ') FROM jsonb_array_elements_text("storeTags") AS tag)
         ) @@ to_tsquery(?)`,
                         [searchTerm]
                     )

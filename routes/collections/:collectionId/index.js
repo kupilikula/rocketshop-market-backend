@@ -16,15 +16,16 @@ module.exports = async function (fastify, opts) {
         return reply.status(404).send({ error: 'Collection not found or inactive.' });
       }
 
-      // Fetch active products within the collection
-      const products = await knex('products')
-          .where({ isActive: true })
-          .andWhereRaw('? = ANY("collectionIds")', [collectionId]) // Match collectionId in collectionIds array
-          .orderBy('displayOrder', 'asc');
-
-      products.forEach(product => {
-        product.mediaItems = JSON.parse(product.mediaItems || '[]');
-      });
+      // Fetch active products within the collection using productCollections table
+      const products = await knex('productCollections')
+          .join('products', 'productCollections.productId', 'products.productId')
+          .select(
+              'products.*',
+              'productCollections.displayOrder'
+          )
+          .where({ 'productCollections.collectionId': collectionId })
+          .andWhere('products.isActive', true)
+          .orderBy('productCollections.displayOrder', 'asc');
 
       return reply.send({ ...collection, products });
     } catch (error) {

@@ -8,40 +8,53 @@ module.exports = async function (fastify, opts) {
 
     try {
       // Construct the query for products and stores
-      const productsQuery = knex('products')
-          .select(
-              'productId',
-              'productName',
-              'description',
-              'productTags',
-              'attributes',
-              'created_at',
-              knex.raw(`'product' as type`) // Add a type field to differentiate results
-          )
-          .where('isActive', true) // Ensure only active products are retrieved
-          .andWhereRaw(
-              `to_tsvector('english', coalesce("productName", '') || ' ' || coalesce("description", '')) @@ to_tsquery(?)`,
-              [searchTerm]
-          )
-          .unionAll(function () {
-            this.select(
-                'storeId as id',
-                'storeName as name',
-                'storeDescription as description',
-                'storeTags',
-                knex.raw(`NULL as attributes`),
-                knex.raw(`NULL as created_at`),
-                knex.raw(`'store' as type`) // Add a type field for differentiation
+        const productsQuery = knex
+            .select(
+                'productId as id',
+                'productName as name',
+                'description',
+                'productTags',
+                'attributes',
+                'created_at',
+                knex.raw(`'product' as type`)
             )
-                .from('stores')
-                .whereRaw(
-                    `to_tsvector('english', coalesce("storeName", '') || ' ' || coalesce("storeDescription", '')) @@ to_tsquery(?)`,
-                    [searchTerm]
-                );
-          })
-          .orderBy('created_at', 'desc') // Prioritize newer products
-          .limit(parseInt(size, 10))
-          .offset(parseInt(from, 10));
+            .from('products')
+            .where('isActive', true)
+            .andWhereRaw(
+                `to_tsvector(
+      'english',
+      coalesce("productName", '') || ' ' ||
+      coalesce("description", '') || ' ' ||
+      array_to_string("productTags", ' ') || ' ' ||
+      array_to_string("attributes", ' ')
+    ) @@ to_tsquery(?)`,
+                [searchTerm]
+            )
+            .unionAll(
+                knex
+                    .select(
+                        'storeId as id',
+                        'storeName as name',
+                        'storeDescription as description',
+                        'storeTags',
+                        knex.raw('NULL as attributes'),
+                        'created_at',
+                        knex.raw(`'store' as type`)
+                    )
+                    .from('stores')
+                    .whereRaw(
+                        `to_tsvector(
+          'english',
+          coalesce("storeName", '') || ' ' ||
+          coalesce("storeDescription", '') || ' ' ||
+          array_to_string("storeTags", ' ')
+        ) @@ to_tsquery(?)`,
+                        [searchTerm]
+                    )
+            )
+            .orderBy('created_at', 'desc')
+            .limit(parseInt(size, 10))
+            .offset(parseInt(from, 10));
       console.log('line45, productsQuery:', productsQuery.toString());
       const results = await productsQuery;
       console.log('line47, results:', results);

@@ -30,7 +30,7 @@ module.exports = async function (fastify, opts) {
                 'storeDescription as description',
                 'storeTags',
                 knex.raw(`NULL as attributes`),
-                knex.raw(`NULL as creationTime`),
+                knex.raw(`NULL as created_at`),
                 knex.raw(`'store' as type`) // Add a type field for differentiation
             )
                 .from('stores')
@@ -39,7 +39,7 @@ module.exports = async function (fastify, opts) {
                     [searchTerm]
                 );
           })
-          .orderBy('creationTime', 'desc') // Prioritize newer products
+          .orderBy('created_at', 'desc') // Prioritize newer products
           .limit(parseInt(size, 10))
           .offset(parseInt(from, 10));
 

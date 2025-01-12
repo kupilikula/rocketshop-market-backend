@@ -11,7 +11,7 @@ module.exports = async function (fastify, opts) {
         return reply.status(404).send({ error: 'Product not found.' });
       }
 
-      return reply.send({ product });
+      return reply.send(product);
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Failed to fetch product details.' });

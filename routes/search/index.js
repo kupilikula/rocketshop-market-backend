@@ -10,35 +10,35 @@ module.exports = async function (fastify, opts) {
       // Construct the query for products and stores
         const productsQuery = knex
             .select(
-                'productId as id',
-                'productName as name',
-                'description',
-                'productTags',
-                'attributes',
-                'created_at',
+                '"productId" as id',
+                '"productName" as name',
+                '"description"',
+                '"productTags"',
+                '"attributes"',
+                '"created_at"',
                 knex.raw(`'product' as type`)
             )
             .from('products')
-            .where('isActive', true)
+            .where('"isActive"', true)
             .andWhereRaw(
                 `to_tsvector(
       'english',
       coalesce("productName", '') || ' ' ||
       coalesce("description", '') || ' ' ||
-      (SELECT string_agg(tag, ' ') FROM jsonb_array_elements_text("productTags") AS tag) || ' ' ||
-      (SELECT string_agg(attr->>'value', ' ') FROM jsonb_array_elements("attributes") AS attr)
+      coalesce((SELECT string_agg(tag, ' ') FROM jsonb_array_elements_text("productTags") AS tag), '') || ' ' ||
+      coalesce((SELECT string_agg(attr->>'value', ' ') FROM jsonb_array_elements("attributes") AS attr), '')
     ) @@ to_tsquery(?)`,
                 [searchTerm]
             )
             .unionAll(
                 knex
                     .select(
-                        'storeId as id',
-                        'storeName as name',
-                        'storeDescription as description',
-                        'storeTags',
-                        knex.raw('NULL as attributes'),
-                        'created_at',
+                        '"storeId" as id',
+                        '"storeName" as name',
+                        '"storeDescription" as description',
+                        '"storeTags"',
+                        knex.raw('NULL as "attributes"'),
+                        '"created_at"',
                         knex.raw(`'store' as type`)
                     )
                     .from('stores')
@@ -47,12 +47,12 @@ module.exports = async function (fastify, opts) {
           'english',
           coalesce("storeName", '') || ' ' ||
           coalesce("storeDescription", '') || ' ' ||
-          (SELECT string_agg(tag, ' ') FROM jsonb_array_elements_text("storeTags") AS tag)
+          coalesce((SELECT string_agg(tag, ' ') FROM jsonb_array_elements_text("storeTags") AS tag), '')
         ) @@ to_tsquery(?)`,
                         [searchTerm]
                     )
             )
-            .orderBy('created_at', 'desc')
+            .orderBy('"created_at"', 'desc')
             .limit(parseInt(size, 10))
             .offset(parseInt(from, 10));
       console.log('line45, productsQuery:', productsQuery.toString());

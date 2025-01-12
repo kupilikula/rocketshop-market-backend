@@ -40,7 +40,7 @@ module.exports = async function (fastify, opts) {
 
       // Filter for followed stores
       if (followedStoreIds.length > 0) {
-        query.orWhereIn('"storeId"', followedStoreIds);
+        query.orWhereIn('storeId', followedStoreIds);
       }
 
       // Boost relevance for interests

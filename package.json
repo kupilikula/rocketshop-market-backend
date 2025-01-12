@@ -6,6 +6,9 @@
   "directories": {
     "test": "test"
   },
+  "_moduleAliases": {
+    "@database": "database"
+  },
   "scripts": {
     "test": "node --test test/**/*.test.js",
     "start": "node server.js",
@@ -22,6 +25,7 @@
     "fastify-cli": "^7.3.0",
     "fastify-plugin": "^5.0.0",
     "knex": "^3.1.0",
+    "module-alias": "^2.2.3",
     "pg": "^8.13.1"
   }
 }

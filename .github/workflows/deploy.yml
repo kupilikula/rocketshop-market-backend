@@ -17,14 +17,17 @@ jobs:
           script: |
             export NVM_DIR=~/.nvm
             source ~/.nvm/nvm.sh
-            pm2 delete marketApi
-            rm -rf market-backend       
-            mkdir market-backend
-            cd market-backend
+            mkdir tmp-market
+            cd tmp-market
             echo 'Cloning git repo'
             git clone git@github.com:PocketShopIndia/market-backend.git .
             echo 'Running npm install'
-            npm install
+            npm install            
+            cd ..
+            pm2 delete marketApi
+            rm -rf market-backend       
+            mv tmp-market market-backend
+            cd market-backend
             echo 'Starting app.'
             pm2 start --name marketApi npm -- run dev --
             echo 'Deployment to digital ocean finished'

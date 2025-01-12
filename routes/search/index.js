@@ -10,64 +10,73 @@ module.exports = async function (fastify, opts) {
             // Construct the query for products and stores
             const productsQuery = knex
                 .select(
-                    '*',
-                    knex.raw(`'product' as type`)
+                    'productId as id',
+                    'productName as name',
+                    'description',
+                    'productTags',
+                    'attributes',
+                    'created_at'
                 )
                 .from('products')
                 .where('isActive', true)
                 .andWhereRaw(
                     `
-          to_tsvector(
-            'english',
-            coalesce("productName", '') || ' ' ||
-            coalesce("description", '') || ' ' ||
-            coalesce(
-              (SELECT string_agg(tag, ' ') 
-               FROM jsonb_array_elements_text("productTags") AS tag), 
-              ''
-            ) || ' ' ||
-            coalesce(
-              (SELECT string_agg(attr->>'value', ' ') 
-               FROM jsonb_array_elements("attributes") AS attr), 
-              ''
-            )
-          ) @@ to_tsquery(?)
-          `,
+    to_tsvector(
+      'english',
+      coalesce("productName", '') || ' ' ||
+      coalesce("description", '') || ' ' ||
+      coalesce(
+        (SELECT string_agg(tag, ' ') 
+         FROM jsonb_array_elements_text("productTags") AS tag), 
+        ''
+      ) || ' ' ||
+      coalesce(
+        (SELECT string_agg(attr->>'value', ' ') 
+         FROM jsonb_array_elements("attributes") AS attr), 
+        ''
+      )
+    ) @@ to_tsquery(?)
+    `,
                     [searchTerm]
-                )
-                .unionAll(
-                    knex
-                        .select(
-                            '*',
-                            knex.raw('NULL as attributes'),
-                            knex.raw(`'store' as type`)
-                        )
-                        .from('stores')
-                        .whereRaw(
-                            `
-              to_tsvector(
-                'english',
-                coalesce("storeName", '') || ' ' ||
-                coalesce("storeDescription", '') || ' ' ||
-                coalesce(
-                  (SELECT string_agg(tag, ' ') 
-                   FROM jsonb_array_elements_text("storeTags") AS tag), 
-                  ''
-                )
-              ) @@ to_tsquery(?)
-              `,
-                            [searchTerm]
-                        )
                 )
                 .orderBy('created_at', 'desc')
                 .limit(parseInt(size, 10))
                 .offset(parseInt(from, 10));
 
-            console.log('line45, productsQuery:', productsQuery.toString());
-            const results = await productsQuery;
-            console.log('line47, results:', results);
+            const storesQuery = knex
+                .select(
+                    'storeId as id',
+                    'storeName as name',
+                    'storeDescription as description',
+                    'storeTags',
+                    'created_at'
+                )
+                .from('stores')
+                .andWhereRaw(
+                    `
+    to_tsvector(
+      'english',
+      coalesce("storeName", '') || ' ' ||
+      coalesce("storeDescription", '') || ' ' ||
+      coalesce(
+        (SELECT string_agg(tag, ' ') 
+         FROM jsonb_array_elements_text("storeTags") AS tag), 
+        ''
+      )
+    ) @@ to_tsquery(?)
+    `,
+                    [searchTerm]
+                )
+                .orderBy('created_at', 'desc')
+                .limit(parseInt(size, 10))
+                .offset(parseInt(from, 10));
 
-            return reply.send(results);
+
+            const [products, stores] = await Promise.all([productsQuery, storesQuery]);
+            console.log('line47, products:', products);
+            console.log('line47, stores:', stores);
+
+            return reply.send({products, stores});
         } catch (err) {
             request.log.error(err);
             return reply.status(500).send({ error: 'Failed to fetch search results.' });

@@ -40,21 +40,21 @@ module.exports = async function (fastify, opts) {
 
       // Filter for followed stores
       if (followedStoreIds.length > 0) {
-        query.orWhereIn('storeId', followedStoreIds);
+        query.orWhereIn('"storeId"', followedStoreIds);
       }
 
       // Boost relevance for interests
       if (interests.length > 0) {
-        query.orWhereRaw('productTags && ?', [interests]);
+        query.orWhereRaw('"productTags" && ?', [interests]);
       }
 
       // Filter for lastFetchedAt if provided
       if (lastFetchedAt) {
-        query.andWhere('updatedAt', '>', lastFetchedAt);
+        query.andWhere('updated_at', '>', lastFetchedAt);
       }
 
       // Apply sorting and pagination
-      query.orderBy('creationTime', 'desc')
+      query.orderBy('created_at', 'desc')
           .limit(parseInt(size, 10))
           .offset(parseInt(from, 10));
 

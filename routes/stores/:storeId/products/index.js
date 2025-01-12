@@ -11,7 +11,7 @@ module.exports = async function (fastify, opts) {
       const products = await knex('products')
           .where('storeId', storeId)
           .andWhere('isActive', true) // Optionally filter for active products
-          .orderBy('createdAt', 'desc'); // Order by creation time (most recent first)
+          .orderBy('created_at', 'desc'); // Order by creation time (most recent first)
 
       if (!products || products.length === 0) {
         return reply.status(404).send({ error: 'No products found for this store.' });

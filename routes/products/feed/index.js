@@ -5,7 +5,7 @@ const knex = require("@database/knexInstance");
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
     const { from = 0, size = 20, lastFetchedAt } = request.query;
-    console.log('feed query, from:', from, ', size:', size, ' , lastFetchedAt:', lastFetchedAt);
+    console.log('feed query, from:', from, ', size:', size, ', lastFetchedAt:', lastFetchedAt);
     try {
       const customerId = request.user.customerId;
 
@@ -61,21 +61,25 @@ module.exports = async function (fastify, opts) {
         );
       }
 
-      // Filter for lastFetchedAt if provided
+      // Apply lastFetchedAt filter if provided (for refreshing)
       if (lastFetchedAt) {
         query.andWhere('p.updated_at', '>', lastFetchedAt);
       }
 
-      // Apply sorting and pagination
+      // Apply sorting and pagination (for scrolling)
       query.orderBy([
         { column: 'p.created_at', order: 'desc' },
         { column: 'p.productId', order: 'asc' } // Stable secondary sort
-          ])
-          .limit(parseInt(size, 10))
-          .offset(parseInt(from, 10));
+      ])
+          .limit(parseInt(size, 10));
+
+      // Apply offset only if lastFetchedAt is not provided
+      if (!lastFetchedAt) {
+        query.offset(parseInt(from, 10));
+      }
 
       const productsWithStores = await query;
-      console.log('line76, p:', productsWithStores);
+      console.log('line76, products:', productsWithStores);
 
       return reply.send(productsWithStores);
     } catch (err) {

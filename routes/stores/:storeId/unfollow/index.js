@@ -4,7 +4,7 @@ const knex = require("@database/knexInstance");
 
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
-    const { storeId } = request.body;
+    const { storeId } = request.params;
     const customerId = request.user.customerId;
 
     try {

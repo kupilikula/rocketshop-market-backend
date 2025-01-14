@@ -3,7 +3,7 @@
 const knex = require("@database/knexInstance");
 
 module.exports = async function (fastify, opts) {
-  fastify.post('/unfollow', async (request, reply) => {
+  fastify.post('/', async (request, reply) => {
     const { storeId } = request.body;
     const customerId = request.user.customerId;
 

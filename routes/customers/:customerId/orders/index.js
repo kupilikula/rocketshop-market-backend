@@ -58,7 +58,7 @@ module.exports = async function (fastify, opts) {
             };
           })
       );
-
+      console.log('line61, orderDetails: ', orderDetails);
       return reply.send(orderDetails);
     } catch (error) {
       request.log.error(error);

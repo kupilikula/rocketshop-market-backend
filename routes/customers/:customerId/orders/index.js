@@ -18,7 +18,7 @@ module.exports = async function (fastify, opts) {
       let query = knex('orders').where({ customerId });
 
       if (status) {
-        query = query.andWhere({ orderCurrentStatus: status });
+        query = query.andWhere({ orderStatus: status });
       }
 
       if (startDate) {

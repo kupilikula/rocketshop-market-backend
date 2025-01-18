@@ -3,7 +3,7 @@
 const knex = require("@database/knexInstance");
 
 module.exports = async function (fastify, opts) {
-    fastify.get('/orders/:orderId', async (request, reply) => {
+    fastify.get('/', async (request, reply) => {
         const { orderId } = request.params;
 
         try {

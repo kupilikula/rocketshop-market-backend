@@ -15,8 +15,10 @@ module.exports = async function (fastify, opts) {
             }
 
             const availableStock = product.stock - product.reservedStock;
-
+            console.log('availablestock:', availableStock);
+            console.log('quantity:', quantity);
             if (quantity > availableStock) {
+                console.log('line21');
                 return reply.status(400).send({
                     valid: false,
                     message: `Only ${availableStock} units are available.`,

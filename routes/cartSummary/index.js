@@ -19,7 +19,7 @@ module.exports = async function (fastify, opts) {
 
       const storeDetails = await knex('stores')
           .whereIn('storeId', Object.keys(groupedCart))
-          .select('storeId', 'storeName', 'storeLogo');
+          .select('storeId', 'storeName', 'storeLogoImage');
 
       const response = await Promise.all(
           storeDetails.map(async (store) => {
@@ -51,7 +51,7 @@ module.exports = async function (fastify, opts) {
             return {
               storeId: store.storeId,
               storeName: store.storeName,
-              storeLogo: store.storeLogo,
+              storeLogoImage: store.storeLogoImage,
               billing: {
                 subtotal,
                 shipping,

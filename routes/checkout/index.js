@@ -62,7 +62,6 @@ module.exports = async function (fastify, opts) {
                             await trx('products')
                                 .where('productId', item.product.productId)
                                 .update({
-                                    stock: product.stock - item.quantity,
                                     reservedStock: product.reservedStock + item.quantity,
                                 });
                         }

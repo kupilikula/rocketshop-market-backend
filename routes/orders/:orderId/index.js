@@ -14,7 +14,7 @@ module.exports = async function (fastify, opts) {
                 .select(
                     'o.*', // Select all columns from the orders table
                     's.storeName',
-                    's.storeLogo' // Explicitly select store-specific columns
+                    's.storeLogoImage' // Explicitly select store-specific columns
                 )
                 .first();
 

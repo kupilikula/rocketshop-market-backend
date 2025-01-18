@@ -21,7 +21,7 @@ module.exports = async function (fastify, opts) {
           .select(
               'o.*', // All columns from orders
               's.storeName',
-              's.storeLogo' // Include store name and logo
+              's.storeLogoImage' // Include store name and logo
           );
 
       if (status) {

@@ -1,7 +1,5 @@
 'use strict';
 
-const knex = require('@database/knexInstance');
-
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
     const { cart } = request.body;
@@ -9,58 +7,53 @@ module.exports = async function (fastify, opts) {
     try {
       // Group cart items by store
       const groupedCart = cart.reduce((acc, item) => {
-        const { storeId } = item;
+        const { storeId, storeName, storeLogoImage } = item.product;
         if (!acc[storeId]) {
-          acc[storeId] = { items: [], storeId };
+          acc[storeId] = { items: [], storeId, storeName, storeLogoImage };
         }
         acc[storeId].items.push(item);
         return acc;
       }, {});
 
-      console.log('groupedCart:', groupedCart);
-      const storeDetails = await knex('stores')
-          .whereIn('storeId', Object.keys(groupedCart))
-          .select('storeId', 'storeName', 'storeLogoImage');
-
+      // Build response for each store group
       const response = await Promise.all(
-          storeDetails.map(async (store) => {
-            const storeCart = groupedCart[store.storeId];
+          Object.values(groupedCart).map(async (storeGroup) => {
+            const { storeId, storeName, storeLogoImage, items } = storeGroup;
 
             // Calculate subtotal
-            const subtotal = storeCart.items.reduce(
-                (sum, item) => sum + item.price * item.quantity,
+            const subtotal = items.reduce(
+                (sum, item) => sum + item.product.price * item.quantity,
                 0
             );
 
             // Calculate shipping cost
-            const shipping = await calculateShipping(store.storeId, subtotal);
+            const shipping = await calculateShipping(storeId, subtotal);
 
             // Calculate discount
-            const discount = await calculateDiscount(store.storeId, subtotal);
+            const discount = await calculateDiscount(storeId, subtotal);
 
             // Calculate GST
-            const gst = storeCart.items.reduce(
+            const gst = items.reduce(
                 (sum, item) =>
                     sum +
-                    (item.gstInclusive ? 0 : item.price * item.quantity * item.gstRate / 100),
+                    (item.product.gstInclusive
+                        ? 0
+                        : item.product.price * item.quantity * item.product.gstRate / 100),
                 0
             );
 
-            // Total cost
-            const total = subtotal + shipping - discount + gst;
-
             return {
-              storeId: store.storeId,
-              storeName: store.storeName,
-              storeLogoImage: store.storeLogoImage,
+              storeId,
+              storeName,
+              storeLogoImage,
               billing: {
                 subtotal,
                 shipping,
                 discount,
                 gst,
-                total,
+                total: subtotal + shipping - discount + gst, // Store-specific total
               },
-              items: storeCart.items,
+              items,
             };
           })
       );

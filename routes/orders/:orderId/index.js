@@ -1,14 +1,22 @@
-'use strict'
+'use strict';
 
-const knex = require("@database/knexInstance");
+const knex = require('@database/knexInstance');
 
 module.exports = async function (fastify, opts) {
     fastify.get('/', async (request, reply) => {
         const { orderId } = request.params;
 
         try {
-            // Fetch the main order details
-            const order = await knex('orders').where({ orderId }).first();
+            // Fetch the main order details with store info
+            const order = await knex('orders as o')
+                .join('stores as s', 'o.storeId', 's.storeId')
+                .where('o.orderId', orderId)
+                .select(
+                    'o.*', // Select all columns from the orders table
+                    's.storeName',
+                    's.storeLogo' // Explicitly select store-specific columns
+                )
+                .first();
 
             if (!order) {
                 return reply.status(404).send({ error: 'Order not found.' });
@@ -44,4 +52,4 @@ module.exports = async function (fastify, opts) {
             return reply.status(500).send({ error: 'Failed to fetch order details.' });
         }
     });
-}
+};

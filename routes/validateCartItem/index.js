@@ -19,7 +19,7 @@ module.exports = async function (fastify, opts) {
             console.log('quantity:', quantity);
             if (quantity > availableStock) {
                 console.log('line21');
-                return reply.status(400).send({
+                return reply.status(200).send({
                     valid: false,
                     message: `Only ${availableStock} units are available.`,
                 });

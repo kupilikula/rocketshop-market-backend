@@ -1,5 +1,8 @@
 'use strict';
 
+const { calculateBilling } = require('../../utils/calculateBilling');
+const knex = require('@database/knexInstance');
+
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
     const { cart } = request.body;
@@ -20,40 +23,43 @@ module.exports = async function (fastify, opts) {
           Object.values(groupedCart).map(async (storeGroup) => {
             const { storeId, storeName, storeLogoImage, items } = storeGroup;
 
-            // Calculate subtotal
-            const subtotal = items.reduce(
-                (sum, item) => sum + item.product.price * item.quantity,
-                0
+            const validatedItems = await Promise.all(
+                items.map(async (item) => {
+                  const product = await knex('products')
+                      .where('productId', item.product.productId)
+                      .first();
+
+                  if (!product) {
+                    throw new Error(`Product not found: ${item.product.productId}`);
+                  }
+
+                  const availableStock = product.stock - product.reservedStock;
+
+                  if (item.quantity > availableStock) {
+                    // Adjust quantity to the maximum available stock
+                    return {
+                      ...item,
+                      quantity: availableStock,
+                      adjusted: true, // Mark as adjusted for frontend display
+                    };
+                  }
+
+                  return { ...item, adjusted: false };
+                })
             );
 
-            // Calculate shipping cost
-            const shipping = await calculateShipping(storeId, subtotal);
-
-            // Calculate discount
-            const discount = await calculateDiscount(storeId, subtotal);
-
-            // Calculate GST
-            const gst = items.reduce(
-                (sum, item) =>
-                    sum +
-                    (item.product.gstInclusive
-                        ? 0
-                        : item.product.price * item.quantity * item.product.gstRate / 100),
-                0
+            // Calculate billing based on adjusted items
+            const billing = await calculateBilling(
+                storeId,
+                validatedItems.filter((item) => item.quantity > 0) // Exclude items with zero quantity
             );
 
             return {
               storeId,
               storeName,
               storeLogoImage,
-              billing: {
-                subtotal,
-                shipping,
-                discount,
-                gst,
-                total: subtotal + shipping - discount + gst, // Store-specific total
-              },
-              items,
+              billing,
+              items: validatedItems,
             };
           })
       );
@@ -61,18 +67,7 @@ module.exports = async function (fastify, opts) {
       return reply.send(response);
     } catch (error) {
       request.log.error(error);
-      return reply.status(500).send({ error: 'Failed to calculate cart summary.' });
+      return reply.status(500).send({ error: 'Failed to calculate cart summary.', details: error.message });
     }
   });
 };
-
-// Helper functions for shipping and discount calculation
-async function calculateShipping(storeId, subtotal) {
-  // Example logic for shipping cost
-  return subtotal > 1000 ? 0 : 50; // Free shipping for orders above 1000
-}
-
-async function calculateDiscount(storeId, subtotal) {
-  // Example logic for discount
-  return subtotal > 500 ? 100 : 0; // ₹100 discount for orders above 500
-}

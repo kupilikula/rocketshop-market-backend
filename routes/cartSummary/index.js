@@ -17,6 +17,7 @@ module.exports = async function (fastify, opts) {
         return acc;
       }, {});
 
+      console.log('groupedCart:', groupedCart);
       const storeDetails = await knex('stores')
           .whereIn('storeId', Object.keys(groupedCart))
           .select('storeId', 'storeName', 'storeLogoImage');

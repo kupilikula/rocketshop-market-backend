@@ -1,11 +1,11 @@
-'use strict'
+'use strict';
 
 const knex = require("@database/knexInstance");
 
 module.exports = async function (fastify, opts) {
   fastify.patch('/', async (request, reply) => {
     const { customerId } = request.params;
-    const { fullName, email, phoneNumber, address } = request.body;
+    const { fullName, email, phone, customerHandle } = request.body;
 
     try {
       // Authenticate the customer making the request
@@ -15,16 +15,28 @@ module.exports = async function (fastify, opts) {
       }
 
       // Validate at least one field is provided
-      if (!fullName && !email && !phoneNumber && !address) {
+      if (!fullName && !email && !phone && !customerHandle) {
         return reply.status(400).send({ error: 'No valid fields provided for update.' });
+      }
+
+      // If customerHandle is provided, check for uniqueness
+      if (customerHandle) {
+        const existingCustomer = await knex('customers')
+            .where({ customerHandle })
+            .andWhereNot({ customerId }) // Exclude the current customer
+            .first();
+
+        if (existingCustomer) {
+          return reply.status(400).send({ error: 'Customer handle is already taken.' });
+        }
       }
 
       // Construct the update object
       const updateFields = {};
       if (fullName) updateFields.fullName = fullName;
       if (email) updateFields.email = email;
-      if (phoneNumber) updateFields.phoneNumber = phoneNumber;
-      if (address) updateFields.address = address;
+      if (phone) updateFields.phone = phone;
+      if (customerHandle) updateFields.customerHandle = customerHandle;
 
       // Update the customer record
       await knex('customers')
@@ -37,4 +49,4 @@ module.exports = async function (fastify, opts) {
       return reply.status(500).send({ error: 'Failed to update customer information.' });
     }
   });
-}
+};

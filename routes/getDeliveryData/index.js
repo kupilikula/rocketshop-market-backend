@@ -43,6 +43,7 @@ module.exports = async function (fastify, opts) {
                     'recipients.fullName',
                     'recipients.phone',
                     'recipients.isDefaultRecipient',
+                    'recipients.addressId',
                     'deliveryAddresses.street1',
                     'deliveryAddresses.street2',
                     'deliveryAddresses.city',

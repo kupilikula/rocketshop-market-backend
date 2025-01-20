@@ -7,9 +7,9 @@ module.exports = async function (fastify, opts) {
         try {
             const customerId = request.user.customerId; // Assuming authentication middleware attaches user info
 
-            // Fetch the customer, including the default address details
+            // Fetch the customer
             const customer = await knex('customers')
-                .select('customerId', 'fullName', 'defaultAddressId')
+                .select('customerId', 'fullName')
                 .where({ customerId })
                 .first();
 
@@ -17,7 +17,7 @@ module.exports = async function (fastify, opts) {
                 return reply.status(404).send({ error: 'Customer not found.' });
             }
 
-            // Fetch all saved delivery addresses for the customer
+            // Fetch all delivery addresses for the customer, including the default one
             const deliveryAddresses = await knex('deliveryAddresses')
                 .select(
                     'addressId',
@@ -27,13 +27,15 @@ module.exports = async function (fastify, opts) {
                     'state',
                     'country',
                     'postalCode',
+                    'isDefault', // Indicates whether the address is default
                     'created_at',
                     'updated_at'
                 )
                 .where({ customerId })
+                .orderBy('isDefault', 'desc') // Default address comes first
                 .orderBy('created_at', 'asc');
 
-            // Fetch all saved recipients for the customer
+            // Fetch all recipients for the customer
             const recipients = await knex('recipients')
                 .join('deliveryAddresses', 'recipients.addressId', '=', 'deliveryAddresses.addressId')
                 .select(
@@ -51,12 +53,11 @@ module.exports = async function (fastify, opts) {
                     'recipients.updated_at'
                 )
                 .where({ 'recipients.customerId': customerId })
+                .orderBy('recipients.isDefaultRecipient', 'desc') // Default recipient comes first
                 .orderBy('recipients.created_at', 'asc');
 
-            // Fetch the default address if exists
-            const defaultAddress = customer.defaultAddressId
-                ? deliveryAddresses.find((address) => address.addressId === customer.defaultAddressId)
-                : null;
+            // Extract the default address
+            const defaultAddress = deliveryAddresses.find((address) => address.isDefault) || null;
 
             // Prepare the response data
             const responseData = {

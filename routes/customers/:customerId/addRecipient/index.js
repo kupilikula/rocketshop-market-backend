@@ -1,6 +1,7 @@
 'use strict';
 
 const knex = require("@database/knexInstance");
+const { v4: uuidv4 } = require('uuid'); // Import the uuid library
 
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
@@ -21,16 +22,17 @@ module.exports = async function (fastify, opts) {
           await trx('recipients').where({ customerId }).update({ isDefaultRecipient: false });
         }
 
+        const newRecipientId = uuidv4();
         // Insert the new recipient
-        const [newRecipientId] = await trx('recipients')
+        await trx('recipients')
             .insert({
+                newRecipientId,
               customerId,
               fullName,
               phone, // Add phone field for the recipient
               addressId,
               isDefaultRecipient: isDefaultRecipient || false,
             })
-            .returning('recipientId');
 
         return newRecipientId;
       });

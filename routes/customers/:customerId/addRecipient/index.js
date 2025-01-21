@@ -26,7 +26,7 @@ module.exports = async function (fastify, opts) {
         // Insert the new recipient
         await trx('recipients')
             .insert({
-                newRecipientId,
+                recipientId: newRecipientId,
               customerId,
               fullName,
               phone, // Add phone field for the recipient

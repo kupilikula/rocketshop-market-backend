@@ -28,7 +28,7 @@ async function calculateBilling(storeId, items) {
     ).toFixed(2);
 
     // Calculate total
-    const total = (subtotal + shipping - discount + gst).toFixed(2);
+    const total = parseFloat(subtotal + shipping - discount + gst).toFixed(2);
 
     return {
         subtotal,

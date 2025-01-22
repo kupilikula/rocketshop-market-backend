@@ -26,14 +26,14 @@ module.exports = async function (fastify, opts) {
                     'recipients.isDefaultRecipient',
                     knex.raw(
                         `json_agg(json_build_object(
-                            'addressId', da.addressId,
+                            'addressId', da."addressId",
                             'street1', da.street1,
                             'street2', da.street2,
                             'city', da.city,
                             'state', da.state,
                             'country', da.country,
-                            'postalCode', da.postalCode,
-                            'isDefault', ra.isDefault
+                            'postalCode', da."postalCode",
+                            'isDefault', ra."isDefault"
                         )) as addresses`
                     )
                 )

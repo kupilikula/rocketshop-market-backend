@@ -12,7 +12,7 @@ module.exports = async function (fastify, opts) {
             return reply.status(403).send({ error: 'Customer Id mismatch! Forbidden' });
         }
 
-        const { street1, street2, city, state, country, postalCode, isPrimary } = request.body;
+        const { street1, street2, city, state, country, postalCode, isPrimary, recipientId } = request.body;
 
         try {
             // If the new address is marked as primary, update existing addresses to no longer be primary
@@ -38,6 +38,21 @@ module.exports = async function (fastify, opts) {
                     postalCode,
                     isDefault: isPrimary || false, // Set as default if isPrimary is true
                 });
+
+            // If a recipientId is provided, update the recipient with the new addressId
+            if (recipientId) {
+                const recipient = await knex('recipients')
+                    .where({ recipientId, customerId })
+                    .first();
+
+                if (!recipient) {
+                    return reply.status(404).send({ error: 'Recipient not found or does not belong to the customer.' });
+                }
+
+                await knex('recipients')
+                    .where({ recipientId })
+                    .update({ addressId });
+            }
 
             return reply.send({ success: true, addressId });
         } catch (error) {

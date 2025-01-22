@@ -17,56 +17,38 @@ module.exports = async function (fastify, opts) {
                 return reply.status(404).send({ error: 'Customer not found.' });
             }
 
-            // Fetch all delivery addresses for the customer, including the default one
-            const deliveryAddresses = await knex('deliveryAddresses')
-                .select(
-                    'addressId',
-                    'street1',
-                    'street2',
-                    'city',
-                    'state',
-                    'country',
-                    'postalCode',
-                    'isDefault', // Indicates whether the address is default
-                    'created_at',
-                    'updated_at'
-                )
-                .where({ customerId })
-                .orderBy('isDefault', 'desc') // Default address comes first
-                .orderBy('created_at', 'asc');
-
-            // Fetch all recipients for the customer
+            // Fetch all recipients and their associated addresses
             const recipients = await knex('recipients')
-                .join('deliveryAddresses', 'recipients.addressId', '=', 'deliveryAddresses.addressId')
                 .select(
                     'recipients.recipientId',
                     'recipients.fullName',
                     'recipients.phone',
                     'recipients.isDefaultRecipient',
-                    'recipients.addressId',
-                    'deliveryAddresses.street1',
-                    'deliveryAddresses.street2',
-                    'deliveryAddresses.city',
-                    'deliveryAddresses.state',
-                    'deliveryAddresses.country',
-                    'deliveryAddresses.postalCode',
-                    'recipients.created_at',
-                    'recipients.updated_at'
+                    knex.raw(
+                        `json_agg(json_build_object(
+                            'addressId', da.addressId,
+                            'street1', da.street1,
+                            'street2', da.street2,
+                            'city', da.city,
+                            'state', da.state,
+                            'country', da.country,
+                            'postalCode', da.postalCode,
+                            'isDefault', ra.isDefault
+                        )) as addresses`
+                    )
                 )
+                .leftJoin('recipientAddresses as ra', 'recipients.recipientId', 'ra.recipientId')
+                .leftJoin('deliveryAddresses as da', 'ra.addressId', 'da.addressId')
                 .where({ 'recipients.customerId': customerId })
+                .groupBy('recipients.recipientId')
                 .orderBy('recipients.isDefaultRecipient', 'desc') // Default recipient comes first
                 .orderBy('recipients.created_at', 'asc');
-
-            // Extract the default address
-            const defaultAddress = deliveryAddresses.find((address) => address.isDefault) || null;
 
             // Prepare the response data
             const responseData = {
                 customerId: customer.customerId,
                 customerName: customer.fullName,
-                defaultAddress,
-                deliveryAddresses,
-                recipients,
+                recipients, // Recipients with their associated addresses
             };
 
             return reply.send(responseData);

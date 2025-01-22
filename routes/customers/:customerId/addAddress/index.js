@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 const knex = require("@database/knexInstance");
 const { v4: uuidv4 } = require('uuid'); // Import the uuid library
@@ -14,21 +14,35 @@ module.exports = async function (fastify, opts) {
 
         const { street1, street2, city, state, country, postalCode, isPrimary, recipientId } = request.body;
 
+        if (!recipientId) {
+            return reply.status(400).send({ error: 'Recipient ID is required to add an address.' });
+        }
+
         try {
-            // If the new address is marked as primary, update existing addresses to no longer be primary
-            if (isPrimary) {
-                await knex('deliveryAddresses')
-                    .where({ customerId, isDefault: true })
-                    .update({ isDefault: false });
+            // Validate that the recipient belongs to the customer
+            const recipient = await knex('recipients')
+                .where({ recipientId, customerId })
+                .first();
+
+            if (!recipient) {
+                return reply.status(404).send({ error: 'Recipient not found or does not belong to the customer.' });
             }
 
-            // Generate a UUID for the new address
-            const addressId = uuidv4();
+            // Start a transaction for atomicity
+            const addressId = await knex.transaction(async (trx) => {
+                // If the new address is marked as primary, update existing addresses for the recipient
+                if (isPrimary) {
+                    await trx('recipientAddresses')
+                        .where({ recipientId })
+                        .update({ isDefault: false });
+                }
 
-            // Insert the new address
-            await knex('deliveryAddresses')
-                .insert({
-                    addressId, // Use the generated UUID
+                // Generate a UUID for the new address
+                const newAddressId = uuidv4();
+
+                // Insert the new address
+                await trx('deliveryAddresses').insert({
+                    addressId: newAddressId,
                     customerId,
                     street1,
                     street2,
@@ -36,23 +50,18 @@ module.exports = async function (fastify, opts) {
                     state,
                     country,
                     postalCode,
-                    isDefault: isPrimary || false, // Set as default if isPrimary is true
                 });
 
-            // If a recipientId is provided, update the recipient with the new addressId
-            if (recipientId) {
-                const recipient = await knex('recipients')
-                    .where({ recipientId, customerId })
-                    .first();
+                // Associate the new address with the recipient in the `recipientAddresses` table
+                await trx('recipientAddresses').insert({
+                    recipientAddressId: uuidv4(),
+                    recipientId,
+                    addressId: newAddressId,
+                    isDefault: isPrimary || false, // Set as default if `isPrimary` is true
+                });
 
-                if (!recipient) {
-                    return reply.status(404).send({ error: 'Recipient not found or does not belong to the customer.' });
-                }
-
-                await knex('recipients')
-                    .where({ recipientId })
-                    .update({ addressId });
-            }
+                return newAddressId;
+            });
 
             return reply.send({ success: true, addressId });
         } catch (error) {

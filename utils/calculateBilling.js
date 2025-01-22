@@ -9,13 +9,13 @@ async function calculateBilling(storeId, items) {
     const subtotal = items.reduce(
         (sum, item) => sum + item.product.price * item.quantity,
         0
-    );
+    ).toFixed(2);
 
     // Calculate shipping cost
-    const shipping = await calculateShipping(storeId, subtotal);
+    const shipping = (await calculateShipping(storeId, subtotal)).toFixed(2);
 
     // Calculate discount
-    const discount = await calculateDiscount(storeId, subtotal);
+    const discount = (await calculateDiscount(storeId, subtotal)).toFixed(2);
 
     // Calculate GST
     const gst = items.reduce(
@@ -25,10 +25,10 @@ async function calculateBilling(storeId, items) {
                 ? 0
                 : item.product.price * item.quantity * item.product.gstRate / 100),
         0
-    );
+    ).toFixed(2);
 
     // Calculate total
-    const total = subtotal + shipping - discount + gst;
+    const total = (subtotal + shipping - discount + gst).toFixed(2);
 
     return {
         subtotal,

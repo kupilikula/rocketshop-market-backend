@@ -6,14 +6,14 @@ const { calculateBilling } = require('../../utils/calculateBilling');
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async (request, reply) => {
-        const { cartSummary, customerId, deliveryAddress } = request.body;
+        const { cartSummary, customerId, recipient, deliveryAddress } = request.body;
 
         try {
             // Validate request data
             if (!cartSummary || cartSummary.length === 0) {
                 return reply.status(400).send({ error: 'Cart summary is missing or empty.' });
             }
-            if (!customerId || !deliveryAddress) {
+            if (!customerId || !recipient) {
                 return reply.status(400).send({ error: 'Customer ID or delivery address is missing.' });
             }
 
@@ -72,10 +72,11 @@ module.exports = async function (fastify, opts) {
                             orderId,
                             storeId,
                             customerId,
-                            orderStatus: 'Order Received',
+                            orderStatus: 'Order Created',
                             orderStatusUpdateTime: new Date(),
                             orderTotal: billing.total,
                             orderDate: new Date(),
+                            recipient: JSON.stringify(recipient), // Save delivery address as JSON
                             deliveryAddress: JSON.stringify(deliveryAddress), // Save delivery address as JSON
                             created_at: new Date(),
                             updated_at: new Date(),

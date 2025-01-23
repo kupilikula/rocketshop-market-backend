@@ -28,6 +28,14 @@ module.exports = async function (fastify, opts) {
 
     // try {
     // const user = jwt.verify(token, JWT_SECRET); // Verify the token
+
+    const auth = request.headers.authorization.split('=');
+    if (auth[0]==='merchantId') {
+      request.user = {merchantId: auth[1]}
+    } else if (auth[0]==='customerId') {
+      request.user = {customerId: auth[1]}
+    }
+
     const customerId = request.headers.authorization;
     request.user = {customerId: customerId}; // Attach the user to the request object
     // } catch (err) {

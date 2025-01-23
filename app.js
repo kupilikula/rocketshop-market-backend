@@ -28,16 +28,18 @@ module.exports = async function (fastify, opts) {
 
     // try {
     // const user = jwt.verify(token, JWT_SECRET); // Verify the token
-
+    console.log('authorization:', request.headers.authorization);
+    console.log('auth:', request.headers.authorization.split('='));
     const auth = request.headers.authorization.split('=');
+    console.log('auth:', auth);
     if (auth[0]==='merchantId') {
       request.user = {merchantId: auth[1]}
     } else if (auth[0]==='customerId') {
       request.user = {customerId: auth[1]}
     }
 
-    const customerId = request.headers.authorization;
-    request.user = {customerId: customerId}; // Attach the user to the request object
+    // const customerId = request.headers.authorization;
+    // request.user = {customerId: customerId}; // Attach the user to the request object
     // } catch (err) {
     //   return reply.status(401).send({ error: 'Invalid token' });
     // }

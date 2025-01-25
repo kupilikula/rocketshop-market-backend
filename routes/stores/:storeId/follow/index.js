@@ -27,7 +27,7 @@ module.exports = async function (fastify, opts) {
       await knex('customer_followed_stores').insert({
         customerId,
         storeId,
-        followedAt: new Date(),
+        followed_at: new Date(),
       });
 
       // Increment the followerCount in the stores table

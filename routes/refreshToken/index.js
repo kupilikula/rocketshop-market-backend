@@ -23,7 +23,7 @@ module.exports = async function (fastify, opts) {
             }
 
             // Generate new access token
-            const newAccessToken = generateAccessToken({ userId: payload.userId });
+            const newAccessToken = generateAccessToken({ customerId: payload.userId });
             const newRefreshToken = generateRefreshToken({ userId: payload.userId });
 
             // Decode new refresh token to get expiresAt

@@ -1,6 +1,6 @@
 'use strict'
 
-const {deleteRefreshToken, verifyRefreshToken, deleteAllRefreshTokensForUser} = require("../../services/TokenService");
+const {deleteRefreshToken, verifyRefreshToken, deleteAllRefreshTokensForUser} = require("../../../services/TokenService");
 module.exports = async function (fastify, opts) {
     fastify.post('/', async (request, reply) => {
         const refreshToken = request.cookies.refreshToken;
@@ -21,7 +21,7 @@ module.exports = async function (fastify, opts) {
                 httpOnly: true,
                 secure: true, // Ensure this is true in production
                 sameSite: 'Strict',
-                path: '/auth/refresh',
+                path: '/auth',
             });
 
             return reply.send({ message: 'Logged out successfully' });

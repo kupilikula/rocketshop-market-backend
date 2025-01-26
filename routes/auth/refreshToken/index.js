@@ -1,6 +1,6 @@
 'use strict'
 
-const {checkRefreshToken, storeRefreshToken, deleteRefreshToken, verifyRefreshToken, generateAccessToken, generateRefreshToken} = require("../../services/TokenService");
+const {checkRefreshToken, storeRefreshToken, deleteRefreshToken, verifyRefreshToken, generateAccessToken, generateRefreshToken} = require("../../../services/TokenService");
 const {decode} = require("jsonwebtoken");
 
 
@@ -37,7 +37,7 @@ module.exports = async function (fastify, opts) {
             return reply.setCookie('refreshToken', refreshToken, {
                 httpOnly: true, // Prevent client-side access
                 secure: true, // Use HTTPS in production
-                path: '/refreshToken', // Restrict usage
+                path: '/auth', // Restrict usage
                 sameSite: 'Strict', // Prevent CSRF attacks
             }).send({ accessToken: newAccessToken });
         } catch (error) {

@@ -22,7 +22,7 @@ module.exports = async function (fastify, opts) {
   fastify.decorateRequest('user', null); // Decorate the request with a user property
 
   fastify.addHook('onRequest', async (request, reply) => {
-    const publicRoutes = ['/login', '/refreshToken'];
+    const publicRoutes = ['/login', '/refreshToken', '/logout'];
     const routePath = request.raw.url.split('?')[0]; // Get the path without query parameters
     console.log('routePath:', routePath);
     // Check if the current route is public

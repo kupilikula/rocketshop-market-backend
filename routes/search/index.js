@@ -24,7 +24,7 @@ async function fetchProducts(searchTerm) {
              FROM jsonb_array_elements("attributes") AS attr), 
             ''
           )
-        ) @@ to_tsquery(?)
+        ) @@ plainto_tsquery(?)
         `,
             [searchTerm]
         );
@@ -57,7 +57,7 @@ module.exports = async function (fastify, opts) {
                              FROM jsonb_array_elements("attributes") AS attr), 
                             ''
                           )
-                        ) @@ to_tsquery(?)
+                        ) @@ plainto_tsquery(?)
                         `,
                         [searchTerm]
                     )
@@ -88,7 +88,7 @@ module.exports = async function (fastify, opts) {
                              FROM jsonb_array_elements("attributes") AS attr), 
                             ''
                           )
-                        ) @@ to_tsquery(?)
+                        ) @@ plainto_tsquery(?)
                         `,
                         [searchTerm]
                     );
@@ -123,7 +123,7 @@ module.exports = async function (fastify, opts) {
                              FROM jsonb_array_elements_text("storeTags") AS tag), 
                             ''
                           )
-                        ) @@ to_tsquery(?)
+                        ) @@ plainto_tsquery(?)
                         `,
                         [searchTerm]
                     );

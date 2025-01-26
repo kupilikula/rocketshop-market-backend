@@ -1,7 +1,7 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
-const {generateJWT} = require("../../utils/jwt");
+const {storeRefreshToken, generateAccessToken, generateRefreshToken} = require("../../services/TokenService");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
@@ -28,8 +28,21 @@ module.exports = async function (fastify, opts) {
         const payload = { customerId: customer.customerId };
 
         // Generate JWT
-        const token = generateJWT(payload);
+        const accessToken = generateAccessToken(payload);
+        const refreshToken = generateRefreshToken({ userId: customer.customerId });
 
-        reply.status(200).send({token, customer});
+        // Store refresh token in database (or in-memory store)
+        await storeRefreshToken(customer.customerId, refreshToken); // Example: Save to DB
+
+        // Return tokens (access token in response, refresh token in HTTP-only cookie)
+        reply.status(200)
+            .setCookie('refreshToken', refreshToken, {
+                httpOnly: true, // Prevent client-side access
+                secure: true, // Use HTTPS in production
+                path: '/refreshToken', // Restrict usage
+                sameSite: 'Strict', // Prevent CSRF attacks
+            })
+            .send({ accessToken, customer });
+
     });
 }

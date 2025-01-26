@@ -3,7 +3,7 @@
 const path = require('node:path')
 const AutoLoad = require('@fastify/autoload')
 const cors = require('@fastify/cors')
-const {verifyJWT} = require("./utils/jwt");
+const {verifyAccessToken} = require("./services/TokenService");
 
 
 // Pass --options via CLI arguments in command to enable these options.
@@ -47,7 +47,7 @@ module.exports = async function (fastify, opts) {
   // });
 
   fastify.addHook('onRequest', async (request, reply) => {
-    const publicRoutes = ['/login'];
+    const publicRoutes = ['/login', '/refreshToken'];
     const routePath = request.raw.url.split('?')[0]; // Get the path without query parameters
     console.log('routePath:', routePath);
     // Check if the current route is public
@@ -62,7 +62,7 @@ module.exports = async function (fastify, opts) {
 
     const token = authHeader.split(' ')[1]; // Extract token from Bearer header
     try {
-      const user = verifyJWT(token); // Verify token
+      const user = verifyAccessToken(token); // Verify token
       console.log('jwt user:', user);
       request.user = user; // Attach user to request object
     } catch (error) {

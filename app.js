@@ -48,12 +48,13 @@ module.exports = async function (fastify, opts) {
 
   fastify.addHook('onRequest', async (request, reply) => {
     const publicRoutes = ['/login'];
-
+    const routePath = request.raw.url.split('?')[0]; // Get the path without query parameters
+    console.log('routePath:', routePath);
     // Check if the current route is public
-    if (publicRoutes.includes(request.routerPath)) {
+    if (publicRoutes.includes(routePath)) {
+      console.log('skipping auth for login');
       return; // Skip authentication for public routes
     }
-
     const authHeader = request.headers.authorization;
     if (!authHeader) {
       return reply.status(401).send({ error: 'Unauthorized: Missing token' });

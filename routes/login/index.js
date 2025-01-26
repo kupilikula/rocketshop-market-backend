@@ -2,6 +2,7 @@
 
 const knex = require("@database/knexInstance");
 const {storeRefreshToken, generateAccessToken, generateRefreshToken} = require("../../services/TokenService");
+const {decode} = require("jsonwebtoken");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
@@ -30,9 +31,12 @@ module.exports = async function (fastify, opts) {
         // Generate JWT
         const accessToken = generateAccessToken(payload);
         const refreshToken = generateRefreshToken({ userId: customer.customerId });
+        // Decode new refresh token to get expiresAt
+        const decodedRefreshToken = decode(refreshToken);
+        const expiresAt = new Date(decodedRefreshToken.exp * 1000); // Convert `exp` to milliseconds
 
         // Store refresh token in database (or in-memory store)
-        await storeRefreshToken(customer.customerId, refreshToken); // Example: Save to DB
+        await storeRefreshToken(customer.customerId, refreshToken, expiresAt); // Example: Save to DB
 
         // Return tokens (access token in response, refresh token in HTTP-only cookie)
         reply.status(200)

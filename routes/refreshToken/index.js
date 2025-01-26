@@ -34,7 +34,12 @@ module.exports = async function (fastify, opts) {
             await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
             await deleteRefreshToken(payload.userId, refreshToken); // Invalidate old token
 
-            return reply.send({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+            return reply.setCookie('refreshToken', refreshToken, {
+                httpOnly: true, // Prevent client-side access
+                secure: true, // Use HTTPS in production
+                path: '/refreshToken', // Restrict usage
+                sameSite: 'Strict', // Prevent CSRF attacks
+            }).send({ accessToken: newAccessToken });
         } catch (error) {
             return reply.status(401).send({ error: 'Unauthorized: Invalid or expired refresh token' });
         }

@@ -6,7 +6,7 @@ module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
     const { productId } = request.body;
     const customerId = request.user.customerId; // Assuming JWT middleware attaches `user`
-
+    console.log('addsaveditem request.user:', request.user);
     try {
       await knex('customer_saved_items').insert({
         id: uuidv4(),

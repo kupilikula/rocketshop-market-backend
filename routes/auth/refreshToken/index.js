@@ -34,7 +34,7 @@ module.exports = async function (fastify, opts) {
             await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
             await deleteRefreshToken(payload.userId, refreshToken); // Invalidate old token
 
-            return reply.setCookie('refreshToken', refreshToken, {
+            return reply.setCookie('refreshToken', newRefreshToken, {
                 httpOnly: true, // Prevent client-side access
                 secure: true, // Use HTTPS in production
                 path: '/auth', // Restrict usage

@@ -79,7 +79,7 @@ module.exports = async function (fastify, opts) {
       }
 
       const productsWithStores = await query;
-      console.log('line76, products:', productsWithStores);
+      // console.log('line76, products:', productsWithStores);
 
       return reply.send(productsWithStores);
     } catch (err) {

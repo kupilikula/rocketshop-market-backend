@@ -22,7 +22,7 @@ module.exports = async function (fastify, opts) {
             // Use an `insert ... on conflict` query to avoid duplicate entries
             await knex("message_reads")
                 .insert(readRecords)
-                .onConflict(["messageId", "readerId", "readerType"]) // Ensure uniqueness for readerId, readerType, and messageId
+                .onConflict(["messageId", "readerId"]) // Ensure uniqueness for readerId, readerType, and messageId
                 .merge({ read_at: new Date() }); // Update the `read_at` timestamp for existing entries
 
             reply.send({ success: true });

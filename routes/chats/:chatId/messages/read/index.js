@@ -1,4 +1,5 @@
 const knex = require("@database/knexInstance");
+const { v4: uuidv4 } = require("uuid");
 
 module.exports = async function (fastify, opts) {
     fastify.post("/", async (request, reply) => {
@@ -13,6 +14,7 @@ module.exports = async function (fastify, opts) {
 
             // Insert new read records into the message_reads table
             const readRecords = messageIds.map((messageId) => ({
+                messageReadId: uuidv4(),
                 messageId,
                 readerId: userId,
                 readerType: userType,

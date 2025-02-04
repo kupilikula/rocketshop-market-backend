@@ -13,11 +13,11 @@ const TokenService = {
 // Generate JWT
 
     generateAccessToken(payload) {
-        return jwt.sign(payload, JWT_SECRET, { expiresIn: '1m' }); // Short-lived access token
+        return jwt.sign(payload, JWT_SECRET, { expiresIn: '6h' }); // Short-lived access token
     },
 
     generateRefreshToken(payload) {
-        return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '5m' }); // Long-lived refresh token
+        return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '7d' }); // Long-lived refresh token
     },
 
     verifyAccessToken(token) {

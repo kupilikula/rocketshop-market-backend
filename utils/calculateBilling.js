@@ -1,3 +1,5 @@
+const {calculateDiscount} = require("./calculateDiscount");
+
 /**
  * Calculates the billing details for a store.
  * @param {string} storeId - The store's ID.
@@ -12,10 +14,10 @@ async function calculateBilling(storeId, items) {
     );
 
     // Calculate shipping cost
-    const shipping = (await calculateShipping(storeId, subtotal));
+    const shipping = (await calculateShipping(storeId, items));
 
     // Calculate discount
-    const discount = (await calculateDiscount(storeId, subtotal));
+    const {totalDiscount, appliedOffers} = (await calculateDiscount(storeId, items));
 
     // Calculate GST
     const gst = items.reduce(
@@ -33,34 +35,19 @@ async function calculateBilling(storeId, items) {
     return {
         subtotal,
         shipping,
-        discount,
+        discount: totalDiscount,
+        appliedOffers,
         gst,
         total,
     };
 }
 
-/**
- * Example logic for calculating shipping cost.
- * @param {string} storeId - The store's ID.
- * @param {number} subtotal - The subtotal for the store.
- * @returns {number} - The shipping cost.
- */
-async function calculateShipping(storeId, subtotal) {
-    return subtotal > 1000 ? 0 : 50; // Free shipping for orders above ₹1000
+async function calculateShipping(storeId, items) {
+    return 0; // Free shipping for orders above ₹1000`
 }
 
-/**
- * Example logic for calculating discount.
- * @param {string} storeId - The store's ID.
- * @param {number} subtotal - The subtotal for the store.
- * @returns {number} - The discount amount.
- */
-async function calculateDiscount(storeId, subtotal) {
-    return subtotal > 500 ? 100 : 0; // ₹100 discount for orders above ₹500
-}
 
 module.exports = {
     calculateBilling,
     calculateShipping,
-    calculateDiscount,
 };

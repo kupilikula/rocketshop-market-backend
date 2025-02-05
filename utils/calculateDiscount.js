@@ -37,7 +37,7 @@ async function calculateDiscount(storeId, items) {
                 break;
 
             case "Fixed Amount Off":
-                discountAmount = offer.discountDetails.fixedAmountOff;
+                discountAmount = offer.discountDetails.fixedAmount;
                 break;
 
             case "Buy N Get K Free":

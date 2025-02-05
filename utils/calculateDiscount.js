@@ -16,7 +16,7 @@ async function calculateDiscount(storeId, items) {
     let appliedOffers = [];
 
     for (const offer of offers) {
-        const applicableItems = items.filter(item => isOfferApplicable(item, offer));
+        const applicableItems = items.filter(item => isOfferApplicable(item.product.productId, offer));
 
         if (applicableItems.length === 0) continue; // Skip if no items match this offer
 
@@ -70,19 +70,33 @@ async function calculateDiscount(storeId, items) {
 }
 
 /**
- * Checks if an offer is applicable to a cart item.
- * @param {Object} item - Cart item.
- * @param {Object} offer - Offer details.
- * @returns {boolean} - Whether the offer applies to this item.
+ * Checks if an offer is applicable to a given product.
+ * Fetches product's collections and tags if not available in the object.
+ * @param {string} productId - The product ID.
+ * @param {Object} offer - The offer object.
+ * @returns {Promise<boolean>} - Whether the offer applies to this product.
  */
-function isOfferApplicable(item, offer) {
-    const { productId, collections, tags } = item.product;
+async function isOfferApplicable(productId, offer) {
+    // Fetch product details (including collections and tags) if not provided
+    const product = await knex("products")
+        .where("productId", productId)
+        .select("productId", "productTags")
+        .first();
+
+    if (!product) return false; // Product does not exist
+
+    // Fetch collections for the product
+    const collections = await knex("productCollections")
+        .where("productId", productId)
+        .pluck("collectionId");
+
+    const { productTags } = product;
     const applicableTo = offer.applicableTo;
 
     return (
         (applicableTo.productIds && applicableTo.productIds.includes(productId)) ||
         (applicableTo.collectionIds && applicableTo.collectionIds.some(id => collections.includes(id))) ||
-        (applicableTo.tags && applicableTo.tags.some(tag => tags.includes(tag)))
+        (applicableTo.tags && applicableTo.tags.some(tag => productTags.includes(tag)))
     );
 }
 
@@ -104,4 +118,4 @@ function applyBuyNGetKFreeDiscount(applicableItems, discountDetails) {
     return discount;
 }
 
-module.exports = { calculateDiscount };
+module.exports = { calculateDiscount, isOfferApplicable };

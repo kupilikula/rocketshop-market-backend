@@ -96,7 +96,7 @@ async function isOfferApplicable(productId, offer) {
     return (
         (applicableTo.productIds && applicableTo.productIds.includes(productId)) ||
         (applicableTo.collectionIds && applicableTo.collectionIds.some(id => collections.includes(id))) ||
-        (applicableTo.tags && applicableTo.tags.some(tag => productTags.includes(tag)))
+        (applicableTo.productTags && applicableTo.productTags.some(tag => productTags.includes(tag)))
     );
 }
 

@@ -10,9 +10,8 @@ async function calculateDiscount(storeId, items) {
     // Fetch active offers for the store
     const offers = await knex("offers")
         .where({ storeId, isActive: true })
-        .andWhereRaw('("validityDateRange"->>"validFrom"")::timestamp <= ?', [new Date().toISOString()])
-        .andWhereRaw('("validityDateRange"->>"validUntil")::timestamp > ?', [new Date().toISOString()]);
-
+        .andWhereRaw(`("validityDateRange"->>"validFrom")::timestamptz <= ?`, [new Date().toISOString()])
+        .andWhereRaw(`("validityDateRange"->>"validUntil")::timestamptz > ?`, [new Date().toISOString()]);
     let totalDiscount = 0;
     let appliedOffers = [];
 

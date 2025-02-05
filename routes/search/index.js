@@ -2,7 +2,7 @@
 
 const knex = require("@database/knexInstance");
 
-// Reusable function to query products
+// **Reusable function to query products**
 async function fetchProducts(searchTerm) {
     return knex
         .select('*')
@@ -10,24 +10,25 @@ async function fetchProducts(searchTerm) {
         .where('isActive', true)
         .andWhereRaw(
             `
-        to_tsvector(
-          'english',
-          coalesce("productName", '') || ' ' ||
-          coalesce("description", '') || ' ' ||
-          coalesce(
-            (SELECT string_agg(tag, ' ') 
-             FROM jsonb_array_elements_text("productTags") AS tag), 
-            ''
-          ) || ' ' ||
-          coalesce(
-            (SELECT string_agg(attr->>'value', ' ') 
-             FROM jsonb_array_elements("attributes") AS attr), 
-            ''
-          )
-        ) @@ plainto_tsquery(?)
-        `,
+            to_tsvector(
+              'english',
+              coalesce("productName", '') || ' ' ||
+              coalesce("description", '') || ' ' ||
+              coalesce(
+                (SELECT string_agg(tag, ' ') 
+                 FROM jsonb_array_elements_text("productTags") AS tag), 
+                ''
+              ) || ' ' ||
+              coalesce(
+                (SELECT string_agg(attr->>'value', ' ') 
+                 FROM jsonb_array_elements("attributes") AS attr), 
+                ''
+              )
+            ) @@ websearch_to_tsquery(?)
+            `,
             [searchTerm]
-        );
+        )
+        .orderBy('created_at', 'desc');
 }
 
 module.exports = async function (fastify, opts) {
@@ -36,83 +37,38 @@ module.exports = async function (fastify, opts) {
 
         try {
             if (searchType === "products") {
-                // Fetch products
-                const products = await knex
-                    .select('*')
-                    .from('products')
-                    .where('isActive', true)
-                    .andWhereRaw(
-                        `
-                        to_tsvector(
-                          'english',
-                          coalesce("productName", '') || ' ' ||
-                          coalesce("description", '') || ' ' ||
-                          coalesce(
-                            (SELECT string_agg(tag, ' ') 
-                             FROM jsonb_array_elements_text("productTags") AS tag), 
-                            ''
-                          ) || ' ' ||
-                          coalesce(
-                            (SELECT string_agg(attr->>'value', ' ') 
-                             FROM jsonb_array_elements("attributes") AS attr), 
-                            ''
-                          )
-                        ) @@ plainto_tsquery(?)
-                        `,
-                        [searchTerm]
-                    )
-                    .orderBy('created_at', 'desc')
+                // 🔹 Fetch product search results using the helper function
+                const products = await fetchProducts(searchTerm)
                     .limit(parseInt(size, 10))
                     .offset(parseInt(from, 10));
 
                 return reply.send({ products });
             } else if (searchType === "stores") {
-                // Fetch products for boosting store results
-                const productResults = await knex
-                    .select('storeId')
-                    .from('products')
-                    .where('isActive', true)
-                    .andWhereRaw(
-                        `
-                        to_tsvector(
-                          'english',
-                          coalesce("productName", '') || ' ' ||
-                          coalesce("description", '') || ' ' ||
-                          coalesce(
-                            (SELECT string_agg(tag, ' ') 
-                             FROM jsonb_array_elements_text("productTags") AS tag), 
-                            ''
-                          ) || ' ' ||
-                          coalesce(
-                            (SELECT string_agg(attr->>'value', ' ') 
-                             FROM jsonb_array_elements("attributes") AS attr), 
-                            ''
-                          )
-                        ) @@ plainto_tsquery(?)
-                        `,
-                        [searchTerm]
-                    );
+                // 🔹 Fetch products first (for boosting store relevance)
+                const productResults = await fetchProducts(searchTerm);
 
+                // 🔹 Count product occurrences per store
                 const storeCounts = productResults.reduce((acc, result) => {
                     acc[result.storeId] = (acc[result.storeId] || 0) + 1;
                     return acc;
                 }, {});
 
+                // 🔹 Sort store IDs by the number of relevant products
                 const boostedStoreIds = Object.entries(storeCounts)
-                    .sort(([, a], [, b]) => b - a) // Sort by occurrence count
+                    .sort(([, a], [, b]) => b - a) // Sort by frequency
                     .map(([storeId]) => storeId);
 
-                // Fetch boosted stores
+                // 🔹 Fetch boosted store details
                 const boostedStoreDetails = await knex
                     .select('*')
                     .from('stores')
                     .whereIn('storeId', boostedStoreIds);
 
-                // Fetch independent stores
+                // 🔹 Fetch independent stores using `websearch_to_tsquery`
                 const independentStores = await knex
                     .select('*')
                     .from('stores')
-                    .andWhereRaw(
+                    .whereRaw(
                         `
                         to_tsvector(
                           'english',
@@ -123,12 +79,12 @@ module.exports = async function (fastify, opts) {
                              FROM jsonb_array_elements_text("storeTags") AS tag), 
                             ''
                           )
-                        ) @@ plainto_tsquery(?)
+                        ) @@ websearch_to_tsquery(?)
                         `,
                         [searchTerm]
                     );
 
-                // Combine and sort stores by followerCount and created_at
+                // 🔹 Combine and sort stores by relevance
                 const combinedStores = [
                     ...independentStores,
                     ...boostedStoreDetails.filter(
@@ -136,8 +92,8 @@ module.exports = async function (fastify, opts) {
                     ),
                 ].sort((a, b) => {
                     return (
-                        (b.followerCount || 0) - (a.followerCount || 0) || // Sort by follower count
-                        new Date(b.created_at) - new Date(a.created_at) // Secondary sort by created_at
+                        (b.followerCount || 0) - (a.followerCount || 0) || // Sort by followers
+                        new Date(b.created_at) - new Date(a.created_at)   // Secondary sort by date
                     );
                 });
 

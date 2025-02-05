@@ -2,8 +2,26 @@
 
 const knex = require("@database/knexInstance");
 
+/**
+ * Converts a search term into a PostgreSQL `to_tsquery`-compatible format.
+ * - Splits the term into words.
+ * - Appends `:*` to enable prefix matching on **all words**.
+ * - Joins words with `&` for **better multi-word search**.
+ * @param {string} searchTerm - User input search term.
+ * @returns {string} - Processed search query for PostgreSQL FTS.
+ */
+function formatTsQuery(searchTerm) {
+    return searchTerm
+        .trim()
+        .split(/\s+/) // Split by spaces
+        .map(word => `${word}:*`) // Append `:*` to each word
+        .join(' & '); // Join words using `&`
+}
+
 // **Reusable function to query products**
 async function fetchProducts(searchTerm) {
+    const formattedQuery = formatTsQuery(searchTerm);
+
     return await knex
         .select('*')
         .from('products')
@@ -24,9 +42,9 @@ async function fetchProducts(searchTerm) {
                  FROM jsonb_array_elements("attributes") AS attr), 
                 ''
               )
-            ) @@ to_tsquery('english', ? || ':*')
+            ) @@ to_tsquery('english', ?)
             `,
-            [searchTerm]
+            [formattedQuery]
         )
         .orderBy('created_at', 'desc');
 }
@@ -36,6 +54,10 @@ module.exports = async function (fastify, opts) {
         const { query: searchTerm, from = 0, size = 20, searchType } = request.query;
 
         try {
+            if (!searchTerm || searchTerm.trim().length === 0) {
+                return reply.status(400).send({ error: 'Search query cannot be empty.' });
+            }
+
             if (searchType === "products") {
                 // ✅ Await first, then apply limit and offset manually
                 const allProducts = await fetchProducts(searchTerm);
@@ -64,6 +86,7 @@ module.exports = async function (fastify, opts) {
                     .whereIn('storeId', boostedStoreIds);
 
                 // ✅ Fetch independent stores using `to_tsquery`
+                const formattedQuery = formatTsQuery(searchTerm);
                 const independentStores = await knex
                     .select('*')
                     .from('stores')
@@ -78,9 +101,9 @@ module.exports = async function (fastify, opts) {
                              FROM jsonb_array_elements_text("storeTags") AS tag), 
                             ''
                           )
-                        ) @@ to_tsquery('english', ? || ':*')
+                        ) @@ to_tsquery('english', ?)
                         `,
-                        [searchTerm]
+                        [formattedQuery]
                     );
 
                 // ✅ Combine and sort stores by relevance

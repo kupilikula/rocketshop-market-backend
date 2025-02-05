@@ -37,34 +37,33 @@ module.exports = async function (fastify, opts) {
 
         try {
             if (searchType === "products") {
-                // 🔹 Fetch product search results using the helper function
-                const products = await fetchProducts(searchTerm)
-                    .limit(parseInt(size, 10))
-                    .offset(parseInt(from, 10));
+                // ✅ Await first, then apply limit and offset manually
+                const allProducts = await fetchProducts(searchTerm);
+                const paginatedProducts = allProducts.slice(from, from + size);
 
-                return reply.send({ products });
+                return reply.send({ products: paginatedProducts });
             } else if (searchType === "stores") {
-                // 🔹 Fetch products first (for boosting store relevance)
-                const productResults = await fetchProducts(searchTerm);
+                // ✅ Fetch all products first
+                const allProductResults = await fetchProducts(searchTerm);
 
-                // 🔹 Count product occurrences per store
-                const storeCounts = productResults.reduce((acc, result) => {
+                // ✅ Count product occurrences per store
+                const storeCounts = allProductResults.reduce((acc, result) => {
                     acc[result.storeId] = (acc[result.storeId] || 0) + 1;
                     return acc;
                 }, {});
 
-                // 🔹 Sort store IDs by the number of relevant products
+                // ✅ Sort store IDs by the number of relevant products
                 const boostedStoreIds = Object.entries(storeCounts)
                     .sort(([, a], [, b]) => b - a) // Sort by frequency
                     .map(([storeId]) => storeId);
 
-                // 🔹 Fetch boosted store details
+                // ✅ Fetch boosted store details
                 const boostedStoreDetails = await knex
                     .select('*')
                     .from('stores')
                     .whereIn('storeId', boostedStoreIds);
 
-                // 🔹 Fetch independent stores using `websearch_to_tsquery`
+                // ✅ Fetch independent stores using `websearch_to_tsquery`
                 const independentStores = await knex
                     .select('*')
                     .from('stores')
@@ -84,7 +83,7 @@ module.exports = async function (fastify, opts) {
                         [searchTerm]
                     );
 
-                // 🔹 Combine and sort stores by relevance
+                // ✅ Combine and sort stores by relevance
                 const combinedStores = [
                     ...independentStores,
                     ...boostedStoreDetails.filter(

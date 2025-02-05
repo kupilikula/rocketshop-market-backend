@@ -6,7 +6,17 @@ module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
     const { productId } = request.params;
     try {
-      const product = await knex('products').where('productId', productId).first();
+      // Fetch product with store details
+      const product = await knex('products')
+          .join('stores', 'products.storeId', 'stores.storeId')
+          .where('products.productId', productId)
+          .select(
+              'products.*',
+              'stores.storeName',
+              'stores.storeLogoImage'
+          )
+          .first();
+
       if (!product) {
         return reply.status(404).send({ error: 'Product not found.' });
       }
@@ -17,4 +27,4 @@ module.exports = async function (fastify, opts) {
       return reply.status(500).send({ error: 'Failed to fetch product details.' });
     }
   });
-}
+};

@@ -30,7 +30,7 @@ async function calculateBilling(storeId, items) {
     );
 
     // Calculate total
-    const total = parseFloat(subtotal + shipping - discount + gst);
+    const total = parseFloat(subtotal + shipping - totalDiscount + gst);
 
     return {
         subtotal,

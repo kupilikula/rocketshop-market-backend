@@ -58,6 +58,7 @@ async function calculateDiscount(storeId, items) {
                 offerId: offer.offerId,
                 offerName: offer.offerName,
                 offerType: offer.offerType,
+                discountDetails: offer.discountDetails,
                 discountAmount,
                 applicableItems
             });

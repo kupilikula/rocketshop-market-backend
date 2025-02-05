@@ -4,7 +4,7 @@ const knex = require("@database/knexInstance");
 
 // **Reusable function to query products**
 async function fetchProducts(searchTerm) {
-    return knex
+    return await knex
         .select('*')
         .from('products')
         .where('isActive', true)
@@ -24,7 +24,7 @@ async function fetchProducts(searchTerm) {
                  FROM jsonb_array_elements("attributes") AS attr), 
                 ''
               )
-            ) @@ websearch_to_tsquery(?)
+            ) @@ to_tsquery('english', ? || ':*')
             `,
             [searchTerm]
         )
@@ -63,7 +63,7 @@ module.exports = async function (fastify, opts) {
                     .from('stores')
                     .whereIn('storeId', boostedStoreIds);
 
-                // ✅ Fetch independent stores using `websearch_to_tsquery`
+                // ✅ Fetch independent stores using `to_tsquery`
                 const independentStores = await knex
                     .select('*')
                     .from('stores')
@@ -78,7 +78,7 @@ module.exports = async function (fastify, opts) {
                              FROM jsonb_array_elements_text("storeTags") AS tag), 
                             ''
                           )
-                        ) @@ websearch_to_tsquery(?)
+                        ) @@ to_tsquery('english', ? || ':*')
                         `,
                         [searchTerm]
                     );

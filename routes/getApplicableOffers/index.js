@@ -5,16 +5,21 @@ const {isOfferApplicable} = require("../../utils/calculateDiscount");
 
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
-    const { productId, collectionId, storeWide } = request.query;
+    const { storeId, productId, collectionId, storeWide } = request.query;
 
     try {
+      if (!storeId) {
+        return reply.status(400).send({ error: "storeId is required." });
+      }
+
       if (!productId && !collectionId && !storeWide) {
         return reply.status(400).send({ error: "Either productId or collectionId or storeWide is required." });
       }
 
       // Fetch active offers for all stores
       let offersQuery = knex("offers")
-          .where("isActive", true)
+          .where("storeId", storeId)  // 🔹 Filter by storeId
+          .andWhere("isActive", true)
           .andWhereRaw(`("validityDateRange"->>'validFrom')::timestamptz <= NOW()`)
           .andWhereRaw(`("validityDateRange"->>'validUntil')::timestamptz > NOW()`);
 

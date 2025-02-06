@@ -26,7 +26,7 @@ module.exports = async function (fastify, opts) {
         applicableOffers = offers.filter((o) => o.applicableTo.storeWide);
       } else {
         for (const offer of offers) {
-          if (productId && (await isOfferApplicable(productId, offer))) {
+          if (productId && (await isOfferApplicable(productId, offer, []))) {
             applicableOffers.push(offer);
           } else if (collectionId && offer.applicableTo.collectionIds?.includes(collectionId)) {
             applicableOffers.push(offer);

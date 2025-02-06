@@ -99,7 +99,7 @@ async function calculateDiscount(storeId, items, offerCodes) {
  */
 async function isOfferApplicable(productId, offer, offerCodes) {
 
-    if (offer.requireCode && !offerCodes.includes(offer.offerCode)) {
+    if (offer.requireCode && (!offerCodes || !offerCodes.includes(offer.offerCode))) {
         return false;
     }
 

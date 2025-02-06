@@ -26,7 +26,16 @@ async function calculateDiscount(storeId, items) {
 
     for (const offer of offers) {
         const applicableItems = items.filter(item => isOfferApplicable(item.product.productId, offer));
-        if (applicableItems.length === 0) continue; // Skip if no applicable items
+
+        if (applicableItems.length === 0) continue; // Skip if no items match this offer
+
+        const subtotal = applicableItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+        const totalItems = applicableItems.reduce((sum, item) => sum + item.quantity, 0);
+
+        // Check conditions (min purchase amount & min items)
+        const { minimumPurchaseAmount, minimumItems } = offer.conditions || {};
+        if (minimumPurchaseAmount && subtotal < minimumPurchaseAmount) continue;
+        if (minimumItems && totalItems < minimumItems) continue;
 
         let discountAmount = 0;
 
@@ -57,6 +66,7 @@ async function calculateDiscount(storeId, items) {
                 offerId: offer.offerId,
                 offerName: offer.offerName,
                 offerType: offer.offerType,
+                offerDisplayText: offer.offerDisplayText,
                 discountDetails: offer.discountDetails,
                 discountAmount,
                 applicableItems

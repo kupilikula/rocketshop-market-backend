@@ -98,6 +98,9 @@ async function isOfferApplicable(productId, offer) {
 
     if (!product) return false; // Product does not exist
 
+    if (offer.applicableTo.storeWide) {
+        return true;
+    }
     // Fetch collections for the product
     const collections = await knex("productCollections")
         .where("productId", productId)

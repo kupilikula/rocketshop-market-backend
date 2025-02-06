@@ -6,7 +6,7 @@ const knex = require("@database/knexInstance");
  * @param {Array} items - The list of items in the cart for the store.
  * @returns {Promise<{totalDiscount: number, appliedOffers: Array}>} - Total discount and list of applied offers.
  */
-async function calculateDiscount(storeId, items) {
+async function calculateDiscount(storeId, items, offerCodes) {
     // Fetch active offers for the store
     const offers = await knex("offers")
         .where({ storeId, isActive: true })
@@ -28,7 +28,7 @@ async function calculateDiscount(storeId, items) {
         const applicableItems = (await Promise.all(
             items.map(async item => ({
                 item,
-                isApplicable: await isOfferApplicable(item.product.productId, offer)
+                isApplicable: await isOfferApplicable(item.product.productId, offer, offerCodes)
             }))
         )).filter(entry => entry.isApplicable).map(entry => entry.item);
 
@@ -97,7 +97,12 @@ async function calculateDiscount(storeId, items) {
  * @param {Object} offer - The offer object.
  * @returns {Promise<boolean>} - Whether the offer applies to this product.
  */
-async function isOfferApplicable(productId, offer) {
+async function isOfferApplicable(productId, offer, offerCodes) {
+
+    if (offer.requireCode && !offerCodes.includes(offer.offerCode)) {
+        return false;
+    }
+
     // Fetch product details (including collections and tags) if not provided
     const product = await knex("products")
         .where("productId", productId)
@@ -116,6 +121,7 @@ async function isOfferApplicable(productId, offer) {
 
     const { productTags } = product;
     const applicableTo = offer.applicableTo;
+
 
     return (
         (applicableTo.productIds && applicableTo.productIds.includes(productId)) ||

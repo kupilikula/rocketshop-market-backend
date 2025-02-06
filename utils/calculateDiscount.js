@@ -11,45 +11,44 @@ async function calculateDiscount(storeId, items) {
     const offers = await knex("offers")
         .where({ storeId, isActive: true })
         .andWhereRaw(`("validityDateRange"->>'validFrom')::timestamptz <= ?`, [new Date().toISOString()])
-        .andWhereRaw(`("validityDateRange"->>'validUntil')::timestamptz > ?`, [new Date().toISOString()]);
+        .andWhereRaw(`("validityDateRange"->>'validUntil')::timestamptz > ?`, [new Date().toISOString()])
+        .orderByRaw(`
+            CASE 
+                WHEN "offerType" = 'Buy N Get K Free' THEN 1
+                WHEN "offerType" = 'Percentage Off' THEN 2
+                WHEN "offerType" = 'Fixed Amount Off' THEN 3
+                ELSE 4
+            END
+        `); // Ensure correct offer application order
+
     let totalDiscount = 0;
     let appliedOffers = [];
 
     for (const offer of offers) {
         const applicableItems = items.filter(item => isOfferApplicable(item.product.productId, offer));
-
-        if (applicableItems.length === 0) continue; // Skip if no items match this offer
-
-        const subtotal = applicableItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-        const totalItems = applicableItems.reduce((sum, item) => sum + item.quantity, 0);
-
-        // Check conditions (min purchase amount & min items)
-        const { minimumPurchaseAmount, minimumItems } = offer.conditions || {};
-        if (minimumPurchaseAmount && subtotal < minimumPurchaseAmount) continue;
-        if (minimumItems && totalItems < minimumItems) continue;
+        if (applicableItems.length === 0) continue; // Skip if no applicable items
 
         let discountAmount = 0;
 
-        // Apply discount based on offer type
-        switch (offer.offerType) {
-            case "Percentage Off":
-                discountAmount = (subtotal * offer.discountDetails.percentage) / 100;
-                break;
+        // Apply "Buy N Get K Free" first
+        if (offer.offerType === "Buy N Get K Free") {
+            discountAmount = applyBuyNGetKFreeDiscount(applicableItems, offer.discountDetails);
+            // Adjust effective quantity (free items shouldn't get further discounts)
+            applicableItems.forEach(item => {
+                item.effectiveQuantity = item.quantity - Math.floor(item.quantity / (offer.discountDetails.buyN + offer.discountDetails.getK)) * offer.discountDetails.getK;
+            });
+        }
 
-            case "Fixed Amount Off":
-                discountAmount = offer.discountDetails.fixedAmount*totalItems;
-                break;
+        // Apply "Percentage Off" to paid items (excluding free items)
+        else if (offer.offerType === "Percentage Off") {
+            const subtotal = applicableItems.reduce((sum, item) => sum + item.product.price * (item.effectiveQuantity || item.quantity), 0);
+            discountAmount = (subtotal * offer.discountDetails.percentage) / 100;
+        }
 
-            case "Buy N Get K Free":
-                discountAmount = applyBuyNGetKFreeDiscount(applicableItems, offer.discountDetails);
-                break;
-
-            case "Free Shipping":
-                // Free shipping logic (handled in `calculateShipping` method)
-                break;
-
-            default:
-                break;
+        // Apply "Fixed Amount Off" only to paid items
+        else if (offer.offerType === "Fixed Amount Off") {
+            const paidItems = applicableItems.reduce((sum, item) => sum + (item.effectiveQuantity || item.quantity), 0);
+            discountAmount = offer.discountDetails.fixedAmount * paidItems;
         }
 
         if (discountAmount > 0) {
@@ -58,7 +57,6 @@ async function calculateDiscount(storeId, items) {
                 offerId: offer.offerId,
                 offerName: offer.offerName,
                 offerType: offer.offerType,
-                offerDisplayText: offer.offerDisplayText,
                 discountDetails: offer.discountDetails,
                 discountAmount,
                 applicableItems

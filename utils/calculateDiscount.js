@@ -25,7 +25,12 @@ async function calculateDiscount(storeId, items) {
     let appliedOffers = [];
 
     for (const offer of offers) {
-        const applicableItems = items.filter(item => isOfferApplicable(item.product.productId, offer));
+        const applicableItems = (await Promise.all(
+            items.map(async item => ({
+                item,
+                isApplicable: await isOfferApplicable(item.product.productId, offer)
+            }))
+        )).filter(entry => entry.isApplicable).map(entry => entry.item);
 
         if (applicableItems.length === 0) continue; // Skip if no items match this offer
 

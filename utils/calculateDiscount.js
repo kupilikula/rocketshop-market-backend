@@ -44,13 +44,20 @@ async function calculateDiscount(storeId, items) {
 
         let discountAmount = 0;
 
-        // Apply "Buy N Get K Free" first
+// Apply Buy N Get K Free collectively across applicable products
         if (offer.offerType === "Buy N Get K Free") {
             discountAmount = applyBuyNGetKFreeDiscount(applicableItems, offer.discountDetails);
-            // Adjust effective quantity (free items shouldn't get further discounts)
-            applicableItems.forEach(item => {
-                item.effectiveQuantity = item.quantity - Math.floor(item.quantity / (offer.discountDetails.buyN + offer.discountDetails.getK)) * offer.discountDetails.getK;
-            });
+
+            // Adjust effective quantities to prevent further discounting on free items
+            let remainingFreeItems = Math.floor(totalItems / (offer.discountDetails.buyN + offer.discountDetails.getK)) * offer.discountDetails.getK;
+
+            for (const item of applicableItems) {
+                if (remainingFreeItems === 0) break;
+
+                const applicableFreeItems = Math.min(item.quantity, remainingFreeItems);
+                item.effectiveQuantity = item.quantity - applicableFreeItems;
+                remainingFreeItems -= applicableFreeItems;
+            }
         }
 
         // Apply "Percentage Off" to paid items (excluding free items)
@@ -118,19 +125,34 @@ async function isOfferApplicable(productId, offer) {
 }
 
 /**
- * Applies Buy N Get K Free discount.
+ * Applies Buy N Get K Free discount collectively across all applicable products.
  * @param {Array} applicableItems - List of applicable cart items.
  * @param {Object} discountDetails - Offer discount details.
  * @returns {number} - Discount amount for Buy N Get K Free.
  */
 function applyBuyNGetKFreeDiscount(applicableItems, discountDetails) {
     const { buyN, getK } = discountDetails;
-    let discount = 0;
 
-    applicableItems.forEach(item => {
-        const freeItems = Math.floor(item.quantity / (buyN + getK)) * getK;
-        discount += freeItems * item.product.price;
-    });
+    // Sort products from lowest price to highest (so free items apply to cheaper ones first)
+    applicableItems.sort((a, b) => a.product.price - b.product.price);
+
+    // Get total quantity across all products
+    const totalQuantity = applicableItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    // Calculate total number of free items across products
+    const freeItems = Math.floor(totalQuantity / (buyN + getK)) * getK;
+
+    let discount = 0;
+    let remainingFreeItems = freeItems;
+
+    // Distribute free items across products (starting from cheapest)
+    for (const item of applicableItems) {
+        if (remainingFreeItems === 0) break;
+
+        const applicableFreeItems = Math.min(item.quantity, remainingFreeItems);
+        discount += applicableFreeItems * item.product.price;
+        remainingFreeItems -= applicableFreeItems;
+    }
 
     return discount;
 }

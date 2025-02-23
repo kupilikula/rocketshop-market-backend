@@ -1,4 +1,5 @@
 const {calculateDiscount} = require("./calculateDiscount");
+const {calculateShipping} = require("./calculateShipping");
 
 /**
  * Calculates the billing details for a store.
@@ -41,10 +42,6 @@ async function calculateBilling(storeId, items, offerCodes) {
         gst,
         total,
     };
-}
-
-async function calculateShipping(storeId, items) {
-    return 0; // Free shipping for orders above ₹1000`
 }
 
 /**

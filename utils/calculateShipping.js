@@ -33,7 +33,7 @@ const calculateShipping = async (storeId, items) => {
 
             // Mark items as processed to avoid applying another rule
             for (const item of applicableItems) {
-                processedItems.add(item.productId);
+                processedItems.add(item.product.productId);
             }
         }
     }

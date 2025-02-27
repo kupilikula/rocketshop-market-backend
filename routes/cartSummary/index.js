@@ -5,7 +5,7 @@ const knex = require('@database/knexInstance');
 
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
-    const { cart, offerCodesMap } = request.body;
+    const { cart, offerCodesMap, deliveryAddress } = request.body;
 
     try {
       // Group cart items by store
@@ -53,7 +53,8 @@ module.exports = async function (fastify, opts) {
             const billing = await calculateBilling(
                 storeId,
                 validatedItems.filter((item) => item.quantity > 0), // Exclude items with zero quantity
-                offerCodes
+                offerCodes,
+                deliveryAddress
             );
 
             return {

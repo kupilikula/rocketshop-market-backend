@@ -7,7 +7,7 @@ const {calculateShipping} = require("./calculateShipping");
  * @param {Array} items - The list of items in the cart for the store.
  * @returns {Object} - The billing details including subtotal, shipping, discount, GST, and total.
  */
-async function calculateBilling(storeId, items, offerCodes) {
+async function calculateBilling(storeId, items, offerCodes, deliveryAddress = null) {
     // Calculate subtotal
     const subtotal = items.reduce(
         (sum, item) => sum + item.product.price * item.quantity,
@@ -15,7 +15,7 @@ async function calculateBilling(storeId, items, offerCodes) {
     );
 
     // Calculate shipping cost
-    const shipping = (await calculateShipping(storeId, items));
+    const shipping = (await calculateShipping(storeId, items, deliveryAddress));
 
     // Calculate discount
     const {totalDiscount, appliedOffers} = (await calculateDiscount(storeId, items, offerCodes));

@@ -1,6 +1,6 @@
 const knex = require('@database/knexInstance');
 
-const calculateShipping = async (storeId, items) => {
+const calculateShipping = async (storeId, items, deliveryAddress) => {
     // Fetch shipping rules from database
     const shippingRules = await knex('shipping_rules')
         .where({ storeId, isActive: true })
@@ -14,26 +14,27 @@ const calculateShipping = async (storeId, items) => {
         let totalItemCount = 0;
         let totalOrderTotal = 0;
 
-        for (const item of items) {
-            if (processedItems.has(item.product.productId)) continue;
-            if (await isShippingRuleApplicable(item.product.productId, rule)) {
+        // Identify all items applicable to this rule before checking conditions
+        for (const item of cartItems) {
+            if (processedItems.has(item.productId)) continue;
+            if (await isShippingRuleApplicable(item.productId, rule, deliveryAddress)) {
                 applicableItems.push(item);
                 totalItemCount += item.quantity;
-                totalOrderTotal += item.product.price * item.quantity;
+                totalOrderTotal += item.price * item.quantity;
             }
         }
 
-        if (applicableItems.length > 0) {
-            const groupShippingCost = evaluateFormula(rule.formula, {
+        // Apply rule only if the grouped items collectively meet the conditions
+        if (applicableItems.length > 0 && evaluateRuleConditions(rule.conditions, deliveryAddress, totalOrderTotal, totalItemCount)) {
+            totalShippingCost += evaluateFormula(rule.formula, {
                 baseCost: rule.baseCost,
                 itemCount: totalItemCount,
                 orderTotal: totalOrderTotal
             });
-            totalShippingCost += groupShippingCost;
 
-            // Mark items as processed to avoid applying another rule
+            // Mark items as processed so they are not considered for further rules
             for (const item of applicableItems) {
-                processedItems.add(item.product.productId);
+                processedItems.add(item.productId);
             }
         }
     }
@@ -68,6 +69,53 @@ const isShippingRuleApplicable = async (productId, rule) => {
         (applicableTo.collectionIds && applicableTo.collectionIds.some(id => collections.includes(id))) ||
         (applicableTo.productTags && applicableTo.productTags.some(tag => productTags.includes(tag)))
     );
+};
+
+const evaluateRuleConditions = (conditions, deliveryAddress, orderTotal, itemCount) => {
+    for (const condition of conditions) {
+        if (!evaluateCondition(condition, deliveryAddress, orderTotal, itemCount)) {
+            return false;
+        }
+    }
+    return true;
+};
+
+const evaluateCondition = (condition, deliveryAddress, orderTotal, itemCount) => {
+    const { type, operator, value, minValue, maxValue } = condition;
+
+    switch (type) {
+        case 'location':
+            return evaluateLocationCondition(condition, deliveryAddress);
+        case 'orderTotal':
+            return evaluateNumericCondition(orderTotal, operator, value, minValue, maxValue);
+        case 'itemCount':
+            return evaluateNumericCondition(itemCount, operator, value);
+        default:
+            return true;
+    }
+};
+
+const evaluateLocationCondition = (condition, address) => {
+    if (!address) return false;
+
+    const valueToCheck = condition.locationType === 'city' ? address.city :
+        condition.locationType === 'state' ? address.state :
+            address.country;
+
+    if (condition.operator === 'inside') {
+        return valueToCheck === (condition.city || condition.state || condition.country);
+    } else if (condition.operator === 'outside') {
+        return valueToCheck !== (condition.city || condition.state || condition.country);
+    }
+    return false;
+};
+
+const evaluateNumericCondition = (fieldValue, operator, value, minValue, maxValue) => {
+    if (operator === '>') return fieldValue > value;
+    if (operator === '<') return fieldValue < value;
+    if (operator === '=') return fieldValue === value;
+    if (operator === 'range') return fieldValue >= minValue && fieldValue <= maxValue;
+    return false;
 };
 
 const evaluateFormula = (formula, variables) => {

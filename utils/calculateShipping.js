@@ -15,7 +15,7 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
         let totalOrderTotal = 0;
 
         // Identify all items applicable to this rule before checking conditions
-        for (const item of cartItems) {
+        for (const item of items) {
             if (processedItems.has(item.productId)) continue;
             if (await isShippingRuleApplicable(item.productId, rule, deliveryAddress)) {
                 applicableItems.push(item);

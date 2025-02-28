@@ -16,8 +16,8 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
 
         // Identify all items applicable to this rule before checking conditions
         for (const item of items) {
-            if (processedItems.has(item.productId)) continue;
-            if (await isShippingRuleApplicable(item.productId, rule, deliveryAddress)) {
+            if (processedItems.has(item.product.productId)) continue;
+            if (await isShippingRuleApplicable(item.product.productId, rule, deliveryAddress)) {
                 applicableItems.push(item);
                 totalItemCount += item.quantity;
                 totalOrderTotal += item.price * item.quantity;
@@ -34,7 +34,7 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
 
             // Mark items as processed so they are not considered for further rules
             for (const item of applicableItems) {
-                processedItems.add(item.productId);
+                processedItems.add(item.product.productId);
             }
         }
     }

@@ -24,7 +24,7 @@ module.exports = async function (fastify, opts) {
                         const { storeId, storeName, storeLogoImage, billing, items } = storeGroup;
 
                         // Revalidate billing details
-                        const expectedBilling = await calculateBilling(storeId, items);
+                        const expectedBilling = await calculateBilling(storeId, items, null, deliveryAddress);
                         if (
                             billing.subtotal !== expectedBilling.subtotal ||
                             billing.shipping !== expectedBilling.shipping ||

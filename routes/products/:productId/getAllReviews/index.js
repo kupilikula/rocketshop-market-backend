@@ -56,7 +56,7 @@ module.exports = async function (fastify, opts) {
                 "product_reviews.review",
                 "product_reviews.created_at",
                 "customers.customerId",
-                "customers.name as customerName"
+                "customers.fullName as customerName"
             )
             .limit(limit)
             .offset(offset);

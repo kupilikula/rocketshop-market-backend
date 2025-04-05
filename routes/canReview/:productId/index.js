@@ -19,7 +19,14 @@ module.exports = async function (fastify, opts) {
           .whereIn("orders.orderStatus", completedStatuses)
           .first();
 
-        return reply.status(200).send({ canReview: !!hasPurchased });
+      let existingReview = null;
+      if (hasPurchased) {
+          existingReview = await knex("product_reviews")
+              .where({ productId, customerId })
+              .first();
+      }
+
+        return reply.status(200).send({ canReview: !!hasPurchased, existingReview });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Failed to get review eligibility.' });

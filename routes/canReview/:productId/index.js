@@ -19,7 +19,7 @@ module.exports = async function (fastify, opts) {
           .whereIn("orders.orderStatus", completedStatuses)
           .first();
 
-        return reply.status(200).send({ canReview: hasPurchased });
+        return reply.status(200).send({ canReview: !!hasPurchased });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Failed to get review eligibility.' });

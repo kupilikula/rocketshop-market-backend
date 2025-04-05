@@ -24,6 +24,8 @@ module.exports = async function (fastify, opts) {
                 "product_reviews.isVisible": true,
             });
 
+
+
         if (minRating) {
             query = query.andWhere("product_reviews.rating", ">=", minRating);
         }
@@ -43,9 +45,11 @@ module.exports = async function (fastify, opts) {
             query = query.orderBy("product_reviews.rating", "asc");
         }
 
-        const totalQuery = query.clone().clearSelect().count("*");
-        const [{ count }] = await totalQuery;
+// Total count (for client-side pagination)
+        const countQuery = query.clone().clearSelect().clearOrder().count("*");
+        const [{ count }] = await countQuery;
 
+// Paginated data
         const reviews = await query
             .select(
                 "product_reviews.rating",

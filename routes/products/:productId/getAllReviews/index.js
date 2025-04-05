@@ -9,7 +9,7 @@ module.exports = async function (fastify, opts) {
             limit = 10,
             offset = 0,
             sort = "latest", // default sort
-            minRating,
+            rating,
             hasTextOnly,
         } = request.query;
 
@@ -26,8 +26,8 @@ module.exports = async function (fastify, opts) {
 
 
 
-        if (minRating) {
-            query = query.andWhere("product_reviews.rating", ">=", minRating);
+        if (rating) {
+            query = query.where("product_reviews.rating", "=", parseInt(rating));
         }
 
         if (hasTextOnly === "true") {

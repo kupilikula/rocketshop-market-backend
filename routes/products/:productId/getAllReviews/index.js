@@ -31,7 +31,7 @@ module.exports = async function (fastify, opts) {
         }
 
         if (hasTextOnly === "true") {
-            query = query.andWhereNotNull("product_reviews.review").andWhere("product_reviews.review", "!=", "");
+            query = query.whereNotNull("product_reviews.review").andWhere("product_reviews.review", "!=", "");
         }
 
         // Sorting

@@ -28,7 +28,7 @@ module.exports = async function (fastify, opts) {
                         CASE 
                             WHEN recipients.type = 'SELF' THEN c."fullName" 
                             ELSE recipients."fullName" 
-                        END as fullName
+                        END as "fullName"
                     `),
                     knex.raw(`
                         CASE 

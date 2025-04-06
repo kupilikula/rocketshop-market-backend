@@ -50,6 +50,7 @@ module.exports = async function (fastify, opts) {
                 await trx('recipients').insert({
                     recipientId: newRecipientId,
                     customerId,
+                    type: 'OTHER',
                     fullName,
                     phone,
                     isDefaultRecipient: isDefaultRecipient || false,

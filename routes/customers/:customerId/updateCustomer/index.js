@@ -39,11 +39,12 @@ module.exports = async function (fastify, opts) {
       if (customerHandle) updateFields.customerHandle = customerHandle;
 
       // Update the customer record
-      const newCustomerData = await knex('customers')
+      const [newCustomerData] = await knex('customers')
           .where({ customerId })
-          .update(updateFields);
+          .update(updateFields)
+          .returning('*');
 
-      return reply.status(200).send({customer: newCustomerData[0]});
+      return reply.status(200).send({customer: newCustomerData});
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Failed to update customer information.' });

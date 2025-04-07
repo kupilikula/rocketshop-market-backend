@@ -12,26 +12,15 @@ module.exports = async function (fastify, opts) {
         }
 
         try {
-            // Get all stores the customer is following with store details
             const followedStores = await knex('customer_followed_stores as cfs')
                 .select([
-                    's.storeId',
-                    's.storeName',
-                    's.storeLogoImage',
-                    's.storeBrandColor',
-                    's.storeDescription',
-                    's.storeHandle',
-                    's.followerCount',
-                    's.storeTags',
-                    's.isActive',
-                    's.created_at as storeCreatedAt',
-                    's.updated_at as storeUpdatedAt',
-                    'cfs.created_at as followedAt'
+                    's.*',
+                    'cfs.followed_at as followed_at'
                 ])
                 .join('stores as s', 's.storeId', 'cfs.storeId')
                 .where({
                     'cfs.customerId': customerId,
-                    's.isActive': true // Only return active stores
+                    's.isActive': true
                 })
                 .orderBy('cfs.created_at', 'desc');
 
@@ -39,7 +28,7 @@ module.exports = async function (fastify, opts) {
                 success: true,
                 stores: followedStores.map(store => ({
                     ...store,
-                    storeTags: JSON.parse(store.storeTags) // Parse JSONB field
+                    storeTags: JSON.parse(store.storeTags)
                 }))
             });
         } catch (error) {

@@ -17,6 +17,7 @@ module.exports = async function (fastify, opts) {
             return reply.status(400).send({ message: "Invalid limit or offset" });
         }
 
+        // Base query with joins and filters
         let query = knex("product_reviews")
             .join("customers", "product_reviews.customerId", "customers.customerId")
             .where({
@@ -24,8 +25,7 @@ module.exports = async function (fastify, opts) {
                 "product_reviews.isVisible": true,
             });
 
-
-
+        // Filters
         if (rating) {
             query = query.where("product_reviews.rating", "=", parseInt(rating));
         }
@@ -45,11 +45,20 @@ module.exports = async function (fastify, opts) {
             query = query.orderBy("product_reviews.rating", "asc");
         }
 
-// Total count (for client-side pagination)
+        // Count of reviews matching current filters
         const countQuery = query.clone().clearSelect().clearOrder().count("*");
-        const [{ count }] = await countQuery;
+        const [{ count: filteredCount }] = await countQuery;
 
-// Paginated data
+        // Count of all visible reviews for this product (unfiltered)
+        const totalCountQuery = knex("product_reviews")
+            .where({
+                productId,
+                isVisible: true,
+            })
+            .count("*");
+        const [{ count: totalCount }] = await totalCountQuery;
+
+        // Paginated data
         const reviews = await query
             .select(
                 "product_reviews.rating",
@@ -64,7 +73,8 @@ module.exports = async function (fastify, opts) {
         return reply.send({
             reviews,
             pagination: {
-                total: parseInt(count),
+                totalCount: parseInt(totalCount),       // all visible reviews
+                filteredCount: parseInt(filteredCount), // count after filters
                 limit,
                 offset,
             },

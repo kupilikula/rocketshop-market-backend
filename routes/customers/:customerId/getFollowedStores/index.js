@@ -26,10 +26,7 @@ module.exports = async function (fastify, opts) {
 
             return reply.send({
                 success: true,
-                stores: followedStores.map(store => ({
-                    ...store,
-                    storeTags: JSON.parse(store.storeTags)
-                }))
+                stores: followedStores
             });
         } catch (error) {
             request.log.error(error);

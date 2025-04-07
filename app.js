@@ -22,26 +22,54 @@ module.exports = async function (fastify, opts) {
   fastify.decorateRequest('user', null); // Decorate the request with a user property
 
   fastify.addHook('onRequest', async (request, reply) => {
-    const publicRoutes = ['/auth/login', '/auth/refreshToken', '/auth/logout'];
-    const routePath = request.raw.url.split('?')[0]; // Get the path without query parameters
+    const publicRoutes = [
+        '/health',
+      '/auth/login',
+      '/auth/refreshToken',
+      '/auth/logout',
+      '/cartSummary',
+      '/checkOfferCode',
+      '/collections',
+      '/getApplicableOffers',
+      '/products',
+      '/stores',
+      '/search',
+      '/validateCartItem'
+      // add more guest-allowed routes as needed
+    ];
+
+    const routePath = request.raw.url.split('?')[0]; // Get the path without query params
     console.log('routePath:', routePath);
-    // Check if the current route is public
-    if (publicRoutes.includes(routePath)) {
-      console.log('skipping auth for login');
-      return; // Skip authentication for public routes
-    }
+
+    const isPublic = publicRoutes.some(publicRoute =>
+        routePath === publicRoute || routePath.startsWith(publicRoute + '/')
+    );
+
     const authHeader = request.headers.authorization;
+
     if (!authHeader) {
-      return reply.status(401).send({ error: 'Unauthorized: Missing token' });
+      if (isPublic) {
+        console.log('Guest access allowed:', routePath);
+        request.user = null; // treat as guest
+        return;
+      } else {
+        return reply.status(401).send({ error: 'Unauthorized: Missing token' });
+      }
     }
 
-    const token = authHeader.split(' ')[1]; // Extract token from Bearer header
+    const token = authHeader.split(' ')[1];
+
     try {
-      const user = verifyAccessToken(token); // Verify token
+      const user = verifyAccessToken(token); // your existing JWT verification function
       console.log('jwt user:', user);
-      request.user = user; // Attach user to request object
+      request.user = user;
     } catch (error) {
-      return reply.status(401).send({ error: 'Unauthorized: Invalid token' });
+      if (isPublic) {
+        console.log('Invalid token, treating as guest for public route:', routePath);
+        request.user = null; // treat as guest if it's a public route
+      } else {
+        return reply.status(401).send({ error: 'Unauthorized: Invalid token' });
+      }
     }
   });
 

@@ -2,7 +2,7 @@
 
 const { v4: uuidv4 } = require("uuid");
 const knex = require("@database/knexInstance");
-const {getCompletedOrderStatuses} = require("../../../../utils/orderStatusList");
+const {getCompletedOrderStatuses} = require("../../../utils/orderStatusList");
 const completedStatuses = getCompletedOrderStatuses();
 
 module.exports = async function (fastify, opts) {

@@ -22,7 +22,7 @@ module.exports = async function (fastify, opts) {
                     'cfs.customerId': customerId,
                     's.isActive': true
                 })
-                .orderBy('cfs.created_at', 'desc');
+                .orderBy('cfs.followed_at', 'desc');
 
             return reply.send({
                 success: true,

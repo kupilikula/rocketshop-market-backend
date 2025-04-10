@@ -27,6 +27,8 @@ module.exports = async function (fastify, opts) {
       '/auth/login',
       '/auth/refreshToken',
       '/auth/logout',
+      '/auth/register',
+      '/auth/sendOtp',
       '/cartSummary',
       '/checkOfferCode',
       '/collections',

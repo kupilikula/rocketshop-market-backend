@@ -32,9 +32,12 @@ module.exports = async function (fastify, opts) {
         await knex('otp_verification').where({ phone }).del();
 
         const customerId = uuidv4();
+        const customerHandle = await generateCustomerHandle(fullName);
+
         // Create customer
         const [customer] = await knex('customers').insert({
             customerId,
+            customerHandle,
             phone,
             fullName,
             created_at: knex.fn.now()
@@ -47,3 +50,27 @@ module.exports = async function (fastify, opts) {
         await replyWithAuthTokens(reply, customer);
     });
 }
+
+const generateCustomerHandle = async (fullName) => {
+    const baseHandle = fullName
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, '') // remove special chars
+        .trim()
+        .replace(/\s+/g, '_'); // replace spaces with underscores
+
+    let handle = baseHandle;
+    let suffix = 1;
+
+    while (true) {
+        const existing = await knex('customers')
+            .where('customerHandle', handle)
+            .first();
+
+        if (!existing) {
+            return handle;
+        }
+
+        handle = `${baseHandle}${suffix}`;
+        suffix++;
+    }
+};

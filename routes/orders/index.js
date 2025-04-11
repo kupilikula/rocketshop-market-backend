@@ -41,9 +41,9 @@ module.exports = async function (fastify, opts) {
           .limit(parseInt(limit))
           .offset(parseInt(offset));
 
-      if (!orders.length) {
-        return reply.status(404).send({ error: 'No orders found.' });
-      }
+      // if (!orders.length) {
+      //   return reply.status(404).send({ error: 'No orders found.' });
+      // }
 
       // Fetch order items for each order
       const orderDetails = await Promise.all(

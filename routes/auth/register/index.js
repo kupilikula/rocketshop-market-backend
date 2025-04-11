@@ -1,19 +1,13 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
-const {
-    storeRefreshToken,
-    generateAccessToken,
-    generateRefreshToken
-} = require("../../../services/TokenService");
-const { decode } = require("jsonwebtoken");
 const {replyWithAuthTokens} = require("../../../services/replyWithAuthTokens");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
-        const { phone, otp, name, address, app } = request.body;
+        const { phone, otp, fullName, address, app } = request.body;
 
-        if (!phone || !otp || !name || !address || !app || (app !== 'marketplace' && app !== 'merchant') ) {
+        if (!phone || !otp || !fullName || !address || !app || (app !== 'marketplace' && app !== 'merchant') ) {
             return reply.status(400).send({ error: 'Missing required fields' });
         }
 
@@ -25,6 +19,7 @@ module.exports = async function (fastify, opts) {
         // Verify latest OTP
         const latestOtpRow = await knex('otp_verification')
             .where({ phone, app })
+            .andWhere({ isVerified: true })
             .orderBy('created_at', 'desc')
             .first();
 
@@ -33,14 +28,16 @@ module.exports = async function (fastify, opts) {
         }
 
         // Create customer
-        const [customerId] = await knex('customers').insert({
+        const [customer] = await knex('customers').insert({
             phone,
-            name,
+            fullName,
             address,
             created_at: knex.fn.now()
-        }).returning('customerId');
+        }).returning('*');
 
-        const customer = await knex('customers').where({ customerId }).first();
+        if (!customer) {
+            return reply.status(500).send({ error: 'Failed to create customer' });
+        }
 
         await replyWithAuthTokens(reply, customer);
     });

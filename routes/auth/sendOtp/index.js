@@ -19,6 +19,7 @@ module.exports = async function (fastify, opts) {
             phone,
             otp,
             app,
+            isVerified: false,
             created_at: knex.fn.now()
         });
 

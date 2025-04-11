@@ -14,7 +14,6 @@ module.exports = async function (fastify, opts) {
         // Verify OTP
         const otpRecord = await knex('otp_verification')
             .where({ phone, app })
-            .andWhere({ is_verified: true })
             .orderBy('created_at', 'desc')
             .first();
 
@@ -22,20 +21,24 @@ module.exports = async function (fastify, opts) {
             return reply.status(401).send({ error: 'Invalid OTP' });
         }
 
-        await knex('otp_verification').where({ phone }).del();
+        const OTP_EXPIRY_MINUTES = 10;
+        const created_at = new Date(otpRecord.created_at);
+        const expires_at = new Date(created_at.getTime() + OTP_EXPIRY_MINUTES * 60000); // 5 min expiry
 
-        // Check if user exists
-        const customer = await knex('customers')
-            .where({ phone })
-            .first();
-
-        if (!customer) {
-            // New user — Frontend should call /auth/register next
-            return reply.status(200).send({ isRegistered: false });
+        if (expires_at < new Date()) {
+            return reply.status(400).send({ error: 'OTP expired' });
         }
 
+        if (otpRecord.isVerified) {
+            return reply.status(400).send({ error: 'OTP already verified' });
+        }
 
-        // Existing customer — Generate Tokens
-        await replyWithAuthTokens(reply, customer);
+        // Success → mark OTP as verified
+        await knex('otp_verification')
+            .where({ otpId: otpRecord.otpId })
+            .update({ isVerified: true });
+
+        return reply.status(200).send({ success: true });
+
     });
 }

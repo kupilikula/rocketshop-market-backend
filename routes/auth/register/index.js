@@ -34,6 +34,7 @@ module.exports = async function (fastify, opts) {
         const customerId = uuidv4();
         // Create customer
         const [customer] = await knex('customers').insert({
+            customerId,
             phone,
             fullName,
             created_at: knex.fn.now()

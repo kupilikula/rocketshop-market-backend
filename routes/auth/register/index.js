@@ -47,6 +47,18 @@ module.exports = async function (fastify, opts) {
             return reply.status(500).send({ error: 'Failed to create customer' });
         }
 
+        //Create recipient for the new customer
+        await knex('recipients').insert({
+            recipientId: uuidv4(),
+            customerId: customer.customerId,
+            fullName: customer.fullName,
+            phone: customer.phone,
+            type: 'SELF',
+            isDefaultRecipient: true,
+            created_at: knex.fn.now(),
+            updated_at: knex.fn.now()
+        });
+
         await TokenService.replyWithAuthTokens(reply, customer);
     });
 }

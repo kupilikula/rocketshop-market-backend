@@ -17,6 +17,8 @@ module.exports = async function (fastify, opts) {
             .orderBy('created_at', 'desc')
             .first();
 
+        console.log('otpRecord:' , otpRecord);
+        console.log('otp:' , otp);
         if (!otpRecord || otpRecord.otp !== otp) {
             return reply.status(401).send({ error: 'Invalid OTP' });
         }

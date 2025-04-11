@@ -18,8 +18,18 @@ module.exports = async function (fastify, opts) {
 
         console.log('otpRecord:' , otpRecord);
         console.log('otp:' , otp);
+
         if (!otpRecord || otpRecord.otp !== otp) {
+            if (otpRecord) {
+                await knex('otp_verification')
+                    .where({otpId: otpRecord.otpId})
+                    .update({attemptCount: otpRecord.attemptCount + 1});
+            }
             return reply.status(401).send({ error: 'Invalid OTP' });
+        }
+
+        if (otpRecord.attemptCount >= 5) {
+            return reply.status(429).send({ error: 'Too many failed attempts. Please request a new OTP.' });
         }
 
         const OTP_EXPIRY_MINUTES = 10;

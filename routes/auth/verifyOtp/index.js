@@ -21,6 +21,7 @@ module.exports = async function (fastify, opts) {
 
         if (!otpRecord || otpRecord.otp !== otp) {
             if (otpRecord) {
+                console.log('otpRecord.attemptCount:' , otpRecord.attemptCount);
                 await knex('otp_verification')
                     .where({otpId: otpRecord.otpId})
                     .update({attemptCount: otpRecord.attemptCount + 1});

@@ -1,7 +1,7 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
-const {replyWithAuthTokens} = require('../../../services/TokenService')
+const TokenService = require('../../../services/TokenService')
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
@@ -36,6 +36,6 @@ module.exports = async function (fastify, opts) {
 
 
         // Existing customer — Generate Tokens
-        await replyWithAuthTokens(reply, customer);
+        await TokenService.replyWithAuthTokens(reply, customer);
     });
 }

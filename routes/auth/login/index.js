@@ -14,7 +14,7 @@ module.exports = async function (fastify, opts) {
         // Verify OTP
         const otpRecord = await knex('otp_verification')
             .where({ phone, app })
-            .andWhere({ is_verified: true })
+            .andWhere({ isVerified: true })
             .orderBy('created_at', 'desc')
             .first();
 

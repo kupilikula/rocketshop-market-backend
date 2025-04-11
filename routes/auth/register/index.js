@@ -5,9 +5,9 @@ const {replyWithAuthTokens} = require("../../../services/replyWithAuthTokens");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
-        const { phone, otp, fullName, address, app } = request.body;
+        const { phone, otp, fullName, app } = request.body;
 
-        if (!phone || !otp || !fullName || !address || !app || (app !== 'marketplace' && app !== 'merchant') ) {
+        if (!phone || !otp || !fullName || !app || (app !== 'marketplace' && app !== 'merchant') ) {
             return reply.status(400).send({ error: 'Missing required fields' });
         }
 
@@ -34,7 +34,6 @@ module.exports = async function (fastify, opts) {
         const [customer] = await knex('customers').insert({
             phone,
             fullName,
-            address,
             created_at: knex.fn.now()
         }).returning('*');
 

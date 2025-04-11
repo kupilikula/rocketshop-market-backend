@@ -1,6 +1,7 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
+const { v4: uuidv4 } = require('uuid');
 const {replyWithAuthTokens} = require("../../../services/replyWithAuthTokens");
 
 module.exports = async function (fastify, opts) {
@@ -30,6 +31,7 @@ module.exports = async function (fastify, opts) {
         //Clear all OTPs for this user
         await knex('otp_verification').where({ phone }).del();
 
+        const customerId = uuidv4();
         // Create customer
         const [customer] = await knex('customers').insert({
             phone,

@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const knex = require("@database/knexInstance");
 const jwt = require('jsonwebtoken');
+const {decode} = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -75,6 +76,26 @@ const TokenService = {
             })
             .del();
     },
+    async replyWithAuthTokens(reply, customer) {
+        const payload = { customerId: customer.customerId };
+
+        const accessToken = this.generateAccessToken(payload);
+        const refreshToken = this.generateRefreshToken({ userId: customer.customerId });
+
+        const decodedRefreshToken = decode(refreshToken);
+        const expiresAt = new Date(decodedRefreshToken.exp * 1000);
+
+        await this.storeRefreshToken(customer.customerId, refreshToken, expiresAt);
+
+        reply.status(200)
+            .setCookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: true,
+                path: '/auth',
+                sameSite: 'Strict',
+            })
+            .send({ accessToken, customer });
+    }
 };
 
 module.exports = TokenService;

@@ -2,7 +2,7 @@
 
 const knex = require("@database/knexInstance");
 const { v4: uuidv4 } = require('uuid');
-const {replyWithAuthTokens} = require("../../../services/replyWithAuthTokens");
+const {replyWithAuthTokens} = require('../../../services/TokenService')
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {

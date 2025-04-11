@@ -27,6 +27,9 @@ module.exports = async function (fastify, opts) {
             return reply.status(401).send({ error: 'Invalid or expired OTP' });
         }
 
+        //Clear all OTPs for this user
+        await knex('otp_verification').where({ phone }).del();
+
         // Create customer
         const [customer] = await knex('customers').insert({
             phone,

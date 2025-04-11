@@ -1,7 +1,6 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
-const {replyWithAuthTokens} = require('../../../services/replyWithAuthTokens')
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {

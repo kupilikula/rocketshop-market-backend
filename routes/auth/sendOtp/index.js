@@ -6,7 +6,7 @@ module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
         const { phone, app } = request.body;
 
-        if (!phone || !app || (app !== 'marketplace' && app !== 'merchant')) {
+        if (!phone || !app || (app !== 'marketplace')) {
             return reply.status(400).send({ error: 'Phone number and app name is required' });
         }
 

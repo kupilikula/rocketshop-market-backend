@@ -6,7 +6,7 @@ module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
         const { phone, otp, app } = request.body;
 
-        if (!phone || !otp || !app || (app !== 'marketplace' && app !== 'merchant')) {
+        if (!phone || !otp || !app || (app !== 'marketplace')) {
             return reply.status(400).send({ error: 'Phone, OTP and app are required' });
         }
 

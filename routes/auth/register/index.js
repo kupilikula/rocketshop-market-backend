@@ -8,7 +8,7 @@ module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
         const { phone, otp, fullName, app } = request.body;
 
-        if (!phone || !otp || !fullName || !app || (app !== 'marketplace' && app !== 'merchant') ) {
+        if (!phone || !otp || !fullName || !app || (app !== 'marketplace') ) {
             return reply.status(400).send({ error: 'Missing required fields' });
         }
 

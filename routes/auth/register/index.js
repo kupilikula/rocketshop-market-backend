@@ -51,8 +51,8 @@ module.exports = async function (fastify, opts) {
         await knex('recipients').insert({
             recipientId: uuidv4(),
             customerId: customer.customerId,
-            fullName: customer.fullName,
-            phone: customer.phone,
+            fullName: null,
+            phone: null,
             type: 'SELF',
             isDefaultRecipient: true,
             created_at: knex.fn.now(),

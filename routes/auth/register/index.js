@@ -68,7 +68,7 @@ const generateCustomerHandle = async (fullName) => {
         .toLowerCase()
         .replace(/[^a-z0-9 ]/g, '') // remove special chars
         .trim()
-        .replace(/\s+/g, '_'); // replace spaces with underscores
+        .replace(/\s+/g, ''); // remove spaces
 
     let handle = baseHandle;
     let suffix = 1;

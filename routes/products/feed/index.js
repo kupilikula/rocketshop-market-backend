@@ -45,7 +45,6 @@ module.exports = async function (fastify, opts) {
               'p.*',
               's.storeName',
               's.storeLogoImage',
-              's.storeBrandColor'
           )
           .join('stores as s', 'p.storeId', 's.storeId')
           .where('p.isActive', true);

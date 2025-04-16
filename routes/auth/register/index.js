@@ -3,12 +3,13 @@
 const knex = require("@database/knexInstance");
 const { v4: uuidv4 } = require('uuid');
 const TokenService = require('../../../services/TokenService')
+const {OTP_EXPIRY_MINUTES} = require("../../../utils/constants");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
-        const { phone, otp, fullName, app } = request.body;
+        const { phone, otp, fullName } = request.body;
 
-        if (!phone || !otp || !fullName || !app || (app !== 'marketplace') ) {
+        if (!phone || !otp || !fullName ) {
             return reply.status(400).send({ error: 'Missing required fields' });
         }
 
@@ -19,17 +20,23 @@ module.exports = async function (fastify, opts) {
 
         // Verify latest OTP
         const latestOtpRow = await knex('otp_verification')
-            .where({ phone, app })
-            .andWhere({ isVerified: true })
+            .where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' })
             .orderBy('created_at', 'desc')
             .first();
 
-        if (!latestOtpRow || latestOtpRow.otp !== otp) {
+        if (!latestOtpRow || latestOtpRow.otp !== otp || !latestOtpRow.isVerified) {
             return reply.status(401).send({ error: 'Invalid or expired OTP' });
         }
 
-        //Clear all OTPs for this user
-        await knex('otp_verification').where({ phone }).del();
+        // Optional: Check OTP expiry again for safety
+        const createdAt = new Date(latestOtpRow.created_at);
+        const expiresAt = new Date(createdAt.getTime() + OTP_EXPIRY_MINUTES * 60000);
+        if (expiresAt < new Date()) {
+            return reply.status(400).send({ error: 'OTP has expired' });
+        }
+
+        //Clear all OTPs for this phone, app and context
+        await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN'}).del();
 
         const customerId = uuidv4();
         const customerHandle = await generateCustomerHandle(fullName);

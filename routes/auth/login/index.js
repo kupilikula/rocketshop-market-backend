@@ -2,27 +2,32 @@
 
 const knex = require("@database/knexInstance");
 const TokenService = require('../../../services/TokenService')
+const {OTP_EXPIRY_MINUTES} = require("../../../utils/constants");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
-        const { phone, otp, app } = request.body;
+        const { phone, otp} = request.body;
 
-        if (!phone || !otp || !app || (app !== 'marketplace')) {
-            return reply.status(400).send({ error: 'Phone, OTP and app are required' });
+        if (!phone || !otp ) {
+            return reply.status(400).send({ error: 'Phone and OTP are required' });
         }
 
         // Verify OTP
         const otpRecord = await knex('otp_verification')
-            .where({ phone, app })
-            .andWhere({ isVerified: true })
+            .where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' })
             .orderBy('created_at', 'desc')
             .first();
 
-        if (!otpRecord || otpRecord.otp !== otp) {
+        if (!otpRecord || otpRecord.otp !== otp || !otpRecord.isVerified) {
             return reply.status(401).send({ error: 'Invalid OTP' });
         }
 
-        await knex('otp_verification').where({ phone }).del();
+        // Optional: Check OTP expiration again for safety (if you want)
+        const createdAt = new Date(otpRecord.created_at);
+        const expiresAt = new Date(createdAt.getTime() + OTP_EXPIRY_MINUTES * 60000);
+        if (expiresAt < new Date()) {
+            return reply.status(400).send({ error: 'OTP has expired' });
+        }
 
         // Check if user exists
         const customer = await knex('customers')
@@ -34,6 +39,7 @@ module.exports = async function (fastify, opts) {
             return reply.status(200).send({ isRegistered: false });
         }
 
+        await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' }).del();
 
         // Existing customer — Generate Tokens
         await TokenService.replyWithAuthTokens(reply, customer);

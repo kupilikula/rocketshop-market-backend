@@ -28,8 +28,8 @@ module.exports = async function (fastify, opts) {
       '/auth/refreshToken',
       '/auth/logout',
       '/auth/register',
-      '/auth/sendOtp',
-      '/auth/verifyOtp',
+      '/sendOtp',
+      '/verifyOtp',
       '/cartSummary',
       '/checkOfferCode',
       '/collections',
@@ -47,7 +47,6 @@ module.exports = async function (fastify, opts) {
     const isPublic = publicRoutes.some(publicRoute =>
         routePath === publicRoute || routePath.startsWith(publicRoute + '/')
     );
-
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {

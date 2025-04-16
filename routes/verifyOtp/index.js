@@ -1,18 +1,31 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
+const {OTP_PUBLIC_CONTEXTS, OTP_PRIVATE_CONTEXTS} = require("../../utils/OtpContexts");
+const {OTP_EXPIRY_MINUTES} = require("../../utils/constants");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
-        const { phone, otp, app } = request.body;
+        const { phone, otp, context } = request.body;
 
-        if (!phone || !otp || !app || (app !== 'marketplace')) {
-            return reply.status(400).send({ error: 'Phone, OTP and app are required' });
+        if (!phone || !otp || !context) {
+            return reply.status(400).send({ error: 'Phone, OTP and context are required' });
+        }
+
+        const isPublicContext = OTP_PUBLIC_CONTEXTS.includes(context);
+        const isPrivateContext = OTP_PRIVATE_CONTEXTS.includes(context);
+
+        if (!isPublicContext && !isPrivateContext) {
+            return reply.status(400).send({ error: 'Invalid context' });
+        }
+        // Require authentication for protected contexts
+        if (!isPublicContext && !request.user) {
+            return reply.status(401).send({ error: 'Unauthorized: This action requires authentication.' });
         }
 
         // Verify OTP
         const otpRecord = await knex('otp_verification')
-            .where({ phone, app })
+            .where({ phone, app: 'marketplace', context })
             .orderBy('created_at', 'desc')
             .first();
 
@@ -33,8 +46,6 @@ module.exports = async function (fastify, opts) {
             return reply.status(401).send({ error: 'Invalid OTP' });
         }
 
-
-        const OTP_EXPIRY_MINUTES = 10;
         const created_at = new Date(otpRecord.created_at);
         const expires_at = new Date(created_at.getTime() + OTP_EXPIRY_MINUTES * 60000); // 5 min expiry
 

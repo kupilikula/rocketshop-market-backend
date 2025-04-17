@@ -43,12 +43,13 @@ module.exports = async function (fastify, opts) {
         await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' }).del();
 
         // Get saved cartData (if any)
-        const cartRow = await knex('customerCartData')
+        const cartRow = await knex('customer_carts')
             .where({ customerId: customer.customerId })
             .orderBy('updated_at', 'desc')
             .first();
 
         const cartData = cartRow?.cartData || null;
+        console.log('cartData:', cartData);
 
         // Existing customer — Generate Tokens
         await TokenService.replyWithAuthTokens(reply, customer, { cartData });

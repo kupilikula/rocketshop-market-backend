@@ -66,7 +66,7 @@ module.exports = async function (fastify, opts) {
             updated_at: knex.fn.now()
         });
 
-        await TokenService.replyWithAuthTokens(reply, customer);
+        await TokenService.replyWithAuthTokens(reply, customer, {cartData: null});
     });
 }
 

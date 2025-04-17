@@ -31,7 +31,15 @@ module.exports = async function (fastify, opts) {
             // Start a transaction for atomicity
             const addressId = await knex.transaction(async (trx) => {
                 // If the new address is marked as primary, update existing addresses for the recipient
-                if (isPrimary) {
+                // Check if the recipient has any existing addresses
+                const existingAddresses = await trx('recipientAddresses')
+                    .where({ recipientId })
+                    .first();
+
+                const isFirstAddress = !existingAddresses;
+
+
+                if (isPrimary || isFirstAddress) {
                     await trx('recipientAddresses')
                         .where({ recipientId })
                         .update({ isDefault: false });
@@ -57,7 +65,7 @@ module.exports = async function (fastify, opts) {
                     recipientAddressId: uuidv4(),
                     recipientId,
                     addressId: newAddressId,
-                    isDefault: isPrimary || false, // Set as default if `isPrimary` is true
+                    isDefault: isPrimary || isFirstAddress, // Set as default if `isPrimary` is true
                 });
 
                 return newAddressId;

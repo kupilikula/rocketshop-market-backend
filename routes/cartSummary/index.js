@@ -5,7 +5,7 @@ const knex = require('@database/knexInstance');
 
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
-    const { cart, offerCodesMap, deliveryAddress } = request.body;
+    const { cart, offerCodesMap, deliveryAddress, customerId } = request.body;
 
     try {
       // Group cart items by store
@@ -66,6 +66,23 @@ module.exports = async function (fastify, opts) {
             };
           })
       );
+
+        if (customerId) {
+            const cartPayload = {
+                cart,
+                offerCodesMap,
+                deliveryAddress,
+            };
+
+            await knex('customer_carts')
+                .insert({
+                    customerId,
+                    cartData: cartPayload,
+                    updated_at: knex.fn.now(),
+                })
+                .onConflict('customerId')
+                .merge(); // Update if customer already has a cart
+        }
 
       return reply.send(response);
     } catch (error) {

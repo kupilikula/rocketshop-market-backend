@@ -76,7 +76,7 @@ const TokenService = {
             })
             .del();
     },
-    async replyWithAuthTokens(reply, customer) {
+    async replyWithAuthTokens(reply, customer,  { cartData = null }) {
         const payload = { customerId: customer.customerId };
 
         const accessToken = this.generateAccessToken(payload);
@@ -94,7 +94,7 @@ const TokenService = {
                 path: '/auth',
                 sameSite: 'Strict',
             })
-            .send({ accessToken, customer });
+            .send({ accessToken, customer, cartData });
     }
 };
 

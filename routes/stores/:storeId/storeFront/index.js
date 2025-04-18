@@ -16,13 +16,26 @@ module.exports = async function (fastify, opts) {
         return reply.status(404).send({ error: 'Store not found or inactive.' });
       }
 
+      // Get total number of active collections (regardless of storeFrontDisplay)
+      const [{ count: totalNumberOfCollections }] = await knex('collections')
+          .where({ storeId, isActive: true })
+          .count('collectionId as count');
+
+
       // Fetch active collections for the store
       const collections = await knex('collections')
           .where({ storeId, isActive: true, storeFrontDisplay: true })
           .orderBy('displayOrder', 'asc');
 
       for (const collection of collections) {
-        // Fetch active products for each collection using productCollections table
+        // Get the total count of active products in the collection
+        const [{ count: totalProducts }] = await knex('productCollections')
+            .join('products', 'productCollections.productId', 'products.productId')
+            .where('productCollections.collectionId', collection.collectionId)
+            .andWhere('products.isActive', true)
+            .count('products.productId as count');
+
+        // Fetch limited active products for each collection using productCollections table
         const productData = await knex('productCollections')
             .join('products', 'productCollections.productId', 'products.productId')
             .select(
@@ -34,10 +47,12 @@ module.exports = async function (fastify, opts) {
             .orderBy('productCollections.displayOrder', 'asc')
             .limit(collection.storeFrontDisplayNumberOfItems);
 
-        collection.products = productData;
+        // Add both the products array and the total count to the collection
+        collection.displayProducts = productData;
+        collection.totalNumberOfProducts = parseInt(totalProducts);
       }
 
-      return reply.send({ ...store, collections });
+      return reply.send({ ...store, displayCollections: collections, totalNumberOfCollections: parseInt(totalNumberOfCollections) });
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Failed to fetch store front data.' });

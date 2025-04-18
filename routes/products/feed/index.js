@@ -47,23 +47,30 @@ module.exports = async function (fastify, opts) {
               's.storeLogoImage',
           )
           .join('stores as s', 'p.storeId', 's.storeId')
-          .where('p.isActive', true);
+          .where('p.isActive', true)
+          .andWhere('s.isActive', true);
 
       // Personalized filtering for logged-in users
       if (!isGuest) {
         if (followedStoreIds.length > 0) {
-          query.orWhereIn('p.storeId', followedStoreIds);
+          query.orWhereIn('p.storeId', followedStoreIds)
+              .andWhere('p.isActive', true)
+              .andWhere('s.isActive', true);
         }
 
         if (interests.length > 0) {
-          query.orWhereRaw(
-              `EXISTS (
-              SELECT 1
-              FROM jsonb_array_elements_text(p."productTags") AS tag
-              WHERE tag = ANY(?)
-            )`,
-              [interests]
-          );
+          query.orWhere((builder) => {
+            builder.whereRaw(
+                `EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(p."productTags") AS tag
+                WHERE tag = ANY(?)
+              )`,
+                [interests]
+            )
+                .andWhere('p.isActive', true)
+                .andWhere('s.isActive', true);
+          });
         }
       }
 

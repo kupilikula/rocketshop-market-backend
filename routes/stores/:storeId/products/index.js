@@ -18,7 +18,7 @@ module.exports = async function (fastify, opts) {
             this.select(1)
                 .from('productCollections as pc')
                 .join('collections as c', 'pc.collectionId', 'c.collectionId')
-                .where('pc.productId', knex.raw('p.productId'))
+                .where('pc.productId', knex.raw('p."productId"'))
                 .andWhere('c.isActive', true);
           })
           .orderBy('p.created_at', 'desc');

@@ -67,7 +67,7 @@ module.exports = async function (fastify, opts) {
       request.user = user;
     } catch (error) {
       if (isPublic) {
-        console.log('Invalid token, treating as guest for public route:', routePath);
+        console.log('No valid token, treating as guest for public route:', routePath);
         request.user = null; // treat as guest if it's a public route
       } else {
         return reply.status(401).send({ error: 'Unauthorized: Invalid token' });

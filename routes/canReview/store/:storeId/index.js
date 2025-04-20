@@ -1,8 +1,8 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
-const {getCompletedOrderStatuses} = require("../../../../utils/orderStatusList");
-const completedStatuses = getCompletedOrderStatuses();
+const {getReviewEligibleOrderStatuses} = require("../../../../utils/orderStatusList");
+const reviewEligibleOrderStatuses = getReviewEligibleOrderStatuses();
 
 module.exports = async function (fastify, opts) {
     fastify.get('/', async (request, reply) => {
@@ -28,7 +28,7 @@ module.exports = async function (fastify, opts) {
                     customerId,
                     storeId,
                 })
-                .whereIn('orderStatus', completedStatuses)
+                .whereIn('orderStatus', reviewEligibleOrderStatuses)
                 .first();
 
 

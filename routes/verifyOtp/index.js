@@ -43,7 +43,7 @@ module.exports = async function (fastify, opts) {
                     return reply.status(429).send({error: 'Too many failed attempts. Please request a new OTP.'});
                 }
             }
-            return reply.status(401).send({ error: 'Invalid OTP' });
+            return reply.status(403).send({ error: 'Invalid OTP' });
         }
 
         const created_at = new Date(otpRecord.created_at);

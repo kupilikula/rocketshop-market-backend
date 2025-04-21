@@ -4,7 +4,7 @@ const orderStatusList = [
     "Payment Failed",
     "Payment Received",
     "Processing",
-    "Ready For Customer Pickup",
+    "Store Pickup Ready",
     "Awaiting Shipment",
     "Shipped",
     "Out for Delivery",
@@ -27,7 +27,7 @@ const PENDING_STATUSES = [
 const IN_PROGRESS_STATUSES = [
     "Payment Received",
     "Processing",
-    "Ready For Customer Pickup",
+    "Store Pickup Ready",
     "Awaiting Shipment",
 ];
 

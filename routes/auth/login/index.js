@@ -49,7 +49,7 @@ module.exports = async function (fastify, opts) {
         }
 
         // Clear all tokens for this context, phone and app
-        await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' }).del();
+        // await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' }).del();
 
         // Get saved cartData (if any)
         const cartRow = await knex('customer_carts')

@@ -45,7 +45,7 @@ module.exports = async function (fastify, opts) {
         }
 
         //Clear all OTPs for this phone, app and context
-        await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN'}).del();
+        // await knex('otp_verification').where({ phone, app: 'marketplace', context: 'AUTH_LOGIN'}).del();
 
         const customerId = uuidv4();
         const customerHandle = await generateCustomerHandle(fullName);

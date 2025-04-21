@@ -19,6 +19,17 @@ module.exports = async function (fastify, opts) {
     credentials: true // Allow cookies and Authorization headers
   });
 
+  fastify.register(require('@fastify/rate-limit'), {
+    global: true,              // ✅ Apply to all routes by default
+    max: 100,                  // ✅ Default: 100 requests
+    timeWindow: '1 minute',    // ✅ Per minute
+    addHeaders: {
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true
+    }
+  });
+
   fastify.decorateRequest('user', null); // Decorate the request with a user property
 
   fastify.addHook('onRequest', async (request, reply) => {

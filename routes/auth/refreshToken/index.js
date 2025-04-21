@@ -5,7 +5,16 @@ const {decode} = require("jsonwebtoken");
 
 
 module.exports = async function (fastify, opts) {
-    fastify.post('/', async (request, reply) => {
+    fastify.post('/',
+        {
+            config: {
+                rateLimit: {
+                    max: 1,                    // Max 5 OTP requests
+                    timeWindow: '1m',  // Per 10 minutes
+                }
+            }
+        },
+        async (request, reply) => {
         const refreshToken = request.cookies.refreshToken; // Read token from HTTP-only cookie
 
         if (!refreshToken) {

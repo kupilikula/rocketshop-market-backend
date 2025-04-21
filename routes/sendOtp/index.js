@@ -6,7 +6,16 @@ const smsService = require("../../services/SMSService");
 const {getOtpText} = require("../../utils/getOtpText");
 
 module.exports = async function (fastify, opts) {
-    fastify.post('/', async function (request, reply) {
+    fastify.post('/',
+        {
+            config: {
+                rateLimit: {
+                    max: 5,                    // Max 5 OTP requests
+                    timeWindow: '10m',  // Per 10 minutes
+                }
+            }
+        },
+        async function (request, reply) {
         const { phone, context } = request.body;
 
         if (!phone || !context) {

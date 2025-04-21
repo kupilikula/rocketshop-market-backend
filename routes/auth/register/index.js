@@ -6,7 +6,16 @@ const TokenService = require('../../../services/TokenService')
 const {OTP_EXPIRY_MINUTES} = require("../../../utils/constants");
 
 module.exports = async function (fastify, opts) {
-    fastify.post('/', async function (request, reply) {
+    fastify.post('/',
+        {
+            config: {
+                rateLimit: {
+                    max: 10,                    // Max 5 OTP requests
+                    timeWindow: '10m',  // Per 10 minutes
+                }
+            }
+        },
+        async function (request, reply) {
         const { phone, otp, fullName } = request.body;
 
         if (!phone || !otp || !fullName ) {

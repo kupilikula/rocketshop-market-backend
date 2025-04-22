@@ -111,8 +111,8 @@ const evaluateLocationCondition = (condition, address) => {
 };
 
 const evaluateNumericCondition = (fieldValue, operator, value, minValue, maxValue) => {
-    if (operator === '>') return fieldValue > value;
-    if (operator === '<') return fieldValue < value;
+    if (operator === '>=') return fieldValue >= value;
+    if (operator === '<=') return fieldValue <= value;
     if (operator === '=') return fieldValue === value;
     if (operator === 'range') return fieldValue >= minValue && fieldValue <= maxValue;
     return false;

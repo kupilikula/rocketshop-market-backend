@@ -21,7 +21,7 @@ module.exports = async function (fastify, opts) {
                 })
                 .where('c.customerId', customerId)
                 .andWhere('m.senderType', 'Merchant') // Only consider messages from merchant
-                .andWhereNull('r.read_at') // Not read by customer
+                .whereNull('r.read_at') // Not read by customer
                 .select(
                     'm.messageId',
                     'm.chatId',

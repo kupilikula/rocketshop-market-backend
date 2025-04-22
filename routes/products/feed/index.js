@@ -92,7 +92,15 @@ module.exports = async function (fastify, opts) {
 
       const productsWithStores = await query;
 
-      return reply.send(productsWithStores);
+      // Attach applicable offers
+      const productsWithOffers = await Promise.all(
+          productsWithStores.map(async (product) => {
+            const applicableOffers = await getApplicableOffersForProduct(product.productId, product.storeId);
+            return { ...product, applicableOffers };
+          })
+      );
+
+      return reply.send(productsWithOffers);
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Failed to fetch feed data.' });

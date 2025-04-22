@@ -16,7 +16,7 @@ module.exports = async function (fastify, opts) {
         return reply.status(400).send({ error: "Either productId or collectionId or storeWide is required." });
       }
 
-      // Fetch active offers for all stores
+      // Fetch active offers
       let offersQuery = knex("offers")
           .where("storeId", storeId)  // 🔹 Filter by storeId
           .andWhere("isActive", true)

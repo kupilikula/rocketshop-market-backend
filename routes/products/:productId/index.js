@@ -1,12 +1,13 @@
-'use strict'
+'use strict';
 
 const knex = require("@database/knexInstance");
+const { getApplicableOffersForProduct } = require("../../../utils/getApplicableOffersForProduct");
 
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {
     const { productId } = request.params;
+
     try {
-      // Fetch product with store details
       const product = await knex('products')
           .join('stores', 'products.storeId', 'stores.storeId')
           .where('products.productId', productId)
@@ -21,7 +22,9 @@ module.exports = async function (fastify, opts) {
         return reply.status(404).send({ error: 'Product not found.' });
       }
 
-      return reply.send(product);
+      const applicableOffers = await getApplicableOffersForProduct(product.productId, product.storeId);
+
+      return reply.send({ ...product, applicableOffers });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Failed to fetch product details.' });

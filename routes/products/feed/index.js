@@ -1,6 +1,7 @@
 'use strict';
 
 const knex = require("@database/knexInstance");
+const {getApplicableOffersForProduct} = require("../../../utils/getApplicableOffersForProduct");
 
 module.exports = async function (fastify, opts) {
   fastify.get('/', async (request, reply) => {

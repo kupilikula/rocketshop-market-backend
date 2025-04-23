@@ -3,7 +3,7 @@ const knex = require('@database/knexInstance');
 
 // routes/storeCollections.js
 module.exports = async function (fastify) {
-    fastify.get('/stores/:storeId/collections', async (request, reply) => {
+    fastify.get('/', async (request, reply) => {
         const { storeId } = request.params;
 
         try {

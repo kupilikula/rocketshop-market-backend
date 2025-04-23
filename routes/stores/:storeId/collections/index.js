@@ -28,7 +28,7 @@ module.exports = async function (fastify) {
 
             return { collections };
         } catch (err) {
-            console.log.error(err);
+            console.log(err);
             return reply.status(500).send({ error: 'Failed to fetch collections' });
         }
     });

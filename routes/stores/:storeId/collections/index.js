@@ -22,7 +22,7 @@ module.exports = async function (fastify) {
                     'c.storeFrontDisplay',
                     'c.storeFrontDisplayNumberOfItems',
                     'c.displayOrder',
-                    knex.raw('COUNT(DISTINCT p.productId) as productCount')
+                    knex.raw('COUNT(DISTINCT p."productId") as "productCount"')
                 )
                 .orderBy('c.displayOrder', 'asc');
 

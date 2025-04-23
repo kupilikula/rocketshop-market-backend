@@ -58,71 +58,74 @@ module.exports = async function (fastify, opts) {
                 return reply.status(400).send({ error: 'Search query cannot be empty.' });
             }
 
-            if (searchType === "products") {
-                // ✅ Await first, then apply limit and offset manually
-                const allProducts = await fetchProducts(searchTerm);
-                const paginatedProducts = allProducts.slice(from, from + size);
+            const formattedQuery = formatTsQuery(searchTerm);
 
+            // ----- Product Search -----
+            const allProducts = await fetchProducts(searchTerm);
+            const paginatedProducts = allProducts.slice(from, from + size);
+
+            // ----- Store Search -----
+            const storeCounts = allProducts.reduce((acc, result) => {
+                acc[result.storeId] = (acc[result.storeId] || 0) + 1;
+                return acc;
+            }, {});
+
+            const boostedStoreIds = Object.entries(storeCounts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([storeId]) => storeId);
+
+            const boostedStoreDetails = boostedStoreIds.length
+                ? await knex('stores').whereIn('storeId', boostedStoreIds)
+                : [];
+
+            const independentStores = await knex
+                .select('*')
+                .from('stores')
+                .whereRaw(
+                    `
+        to_tsvector(
+          'english',
+          coalesce("storeName", '') || ' ' ||
+          coalesce("storeDescription", '') || ' ' ||
+          coalesce(
+            (SELECT string_agg(tag, ' ') 
+             FROM jsonb_array_elements_text("storeTags") AS tag), 
+            ''
+          )
+        ) @@ to_tsquery('english', ?)
+        `,
+                    [formattedQuery]
+                );
+
+            const combinedStores = [
+                ...independentStores,
+                ...boostedStoreDetails.filter(
+                    store => !independentStores.some(ind => ind.storeId === store.storeId)
+                ),
+            ].sort((a, b) => {
+                return (
+                    (b.followerCount || 0) - (a.followerCount || 0) ||
+                    new Date(b.created_at) - new Date(a.created_at)
+                );
+            });
+
+            // ----- Return based on type -----
+            if (searchType === 'products') {
                 return reply.send({ products: paginatedProducts });
-            } else if (searchType === "stores") {
-                // ✅ Fetch all products first
-                const allProductResults = await fetchProducts(searchTerm);
-
-                // ✅ Count product occurrences per store
-                const storeCounts = allProductResults.reduce((acc, result) => {
-                    acc[result.storeId] = (acc[result.storeId] || 0) + 1;
-                    return acc;
-                }, {});
-
-                // ✅ Sort store IDs by the number of relevant products
-                const boostedStoreIds = Object.entries(storeCounts)
-                    .sort(([, a], [, b]) => b - a) // Sort by frequency
-                    .map(([storeId]) => storeId);
-
-                // ✅ Fetch boosted store details
-                const boostedStoreDetails = await knex
-                    .select('*')
-                    .from('stores')
-                    .whereIn('storeId', boostedStoreIds);
-
-                // ✅ Fetch independent stores using `to_tsquery`
-                const formattedQuery = formatTsQuery(searchTerm);
-                const independentStores = await knex
-                    .select('*')
-                    .from('stores')
-                    .whereRaw(
-                        `
-                        to_tsvector(
-                          'english',
-                          coalesce("storeName", '') || ' ' ||
-                          coalesce("storeDescription", '') || ' ' ||
-                          coalesce(
-                            (SELECT string_agg(tag, ' ') 
-                             FROM jsonb_array_elements_text("storeTags") AS tag), 
-                            ''
-                          )
-                        ) @@ to_tsquery('english', ?)
-                        `,
-                        [formattedQuery]
-                    );
-
-                // ✅ Combine and sort stores by relevance
-                const combinedStores = [
-                    ...independentStores,
-                    ...boostedStoreDetails.filter(
-                        store => !independentStores.some(ind => ind.storeId === store.storeId)
-                    ),
-                ].sort((a, b) => {
-                    return (
-                        (b.followerCount || 0) - (a.followerCount || 0) || // Sort by followers
-                        new Date(b.created_at) - new Date(a.created_at)   // Secondary sort by date
-                    );
-                });
-
-                return reply.send({ stores: combinedStores });
-            } else {
-                return reply.status(400).send({ error: 'Invalid searchType parameter.' });
             }
+
+            if (searchType === 'stores') {
+                return reply.send({ stores: combinedStores });
+            }
+
+            if (searchType === 'both') {
+                return reply.send({
+                    products: paginatedProducts,
+                    stores: combinedStores,
+                });
+            }
+
+            return reply.status(400).send({ error: 'Invalid searchType parameter.' });
         } catch (err) {
             request.log.error(err);
             return reply.status(500).send({ error: 'Failed to fetch search results.' });

@@ -84,6 +84,14 @@ module.exports = async function (fastify, opts) {
 
                         await trx('orders').insert(orderData);
 
+                        // Insert the initial status history record
+                        await trx('order_status_history').insert({
+                            orderStatusId: uuidv4(),
+                            orderId: orderId,
+                            orderStatus: 'Order Created'
+                        });
+
+
                         // Insert order items
                         const orderItems = items.map((item) => ({
                             orderId,

@@ -12,9 +12,9 @@ module.exports = async function (fastify, opts) {
               'p.*',
               knex.raw(`
             NOT EXISTS (
-              SELECT 1 FROM productCollections pc
-              JOIN collections c ON c.collectionId = pc.collectionId
-              WHERE pc.productId = p.productId AND c.isActive = true
+              SELECT 1 FROM "productCollections" pc
+              JOIN collections c ON c."collectionId" = pc."collectionId"
+              WHERE pc."productId" = p."productId" AND c."isActive" = true
             ) as "notInAnyActiveCollection"
           `)
           )

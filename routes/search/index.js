@@ -83,13 +83,16 @@ module.exports = async function (fastify, opts) {
                     .map(([storeId]) => storeId);
 
                 const boostedStores = boostedStoreIds.length
-                    ? await knex('stores').whereIn('storeId', boostedStoreIds)
+                    ? await knex('stores')
+                        .whereIn('storeId', boostedStoreIds)
+                        .where('isActive', true)
                     : [];
 
                 // FTS stores
                 const independentStores = await knex
                     .select('*')
                     .from('stores')
+                    .where('isActive', true)
                     .whereRaw(
                         `
           to_tsvector(

@@ -7,11 +7,17 @@ module.exports = async function (fastify, opts) {
     const { storeId } = request.params;
 
     try {
-      // Fetch products belonging to the specific store that are both:
-      // 1. Active themselves
-      // 2. Belong to at least one active collection
       const products = await knex('products as p')
-          .select('p.*')
+          .select(
+              'p.*',
+              knex.raw(`
+            NOT EXISTS (
+              SELECT 1 FROM productCollections pc
+              JOIN collections c ON c.collectionId = pc.collectionId
+              WHERE pc.productId = p.productId AND c.isActive = true
+            ) as "notInAnyActiveCollection"
+          `)
+          )
           .where('p.storeId', storeId)
           .andWhere('p.isActive', true)
           .orderBy('p.created_at', 'desc');
@@ -30,4 +36,4 @@ module.exports = async function (fastify, opts) {
       });
     }
   });
-}
+};

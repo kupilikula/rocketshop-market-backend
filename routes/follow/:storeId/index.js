@@ -36,7 +36,7 @@ module.exports = async function (fastify, opts) {
           .where({ storeId })
           .increment('followerCount', 1);
 
-      await sendNotificationToStoreMerchants(storeId, `You have a new follower: ${customerId}!`)
+      await sendNotificationToStoreMerchants(storeId, {title: 'New Follower', body: `You have a new follower: ${customerId}!`, data: {type: 'follow', customerId}})
 
       return reply.status(200).send({ message: 'Followed the store successfully.' });
     } catch (err) {

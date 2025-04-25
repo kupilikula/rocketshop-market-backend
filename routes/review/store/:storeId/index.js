@@ -3,6 +3,7 @@
 const { v4: uuidv4 } = require("uuid");
 const knex = require("@database/knexInstance");
 const { getReviewEligibleOrderStatuses} = require("../../../../utils/orderStatusList");
+const {checkPreferencesAndSendNotificationToStoreMerchants, MerchantNotificationTypes} = require("../../../../services/PushNotificationsToMerchantsService");
 const reviewEligibleOrderStatuses = getReviewEligibleOrderStatuses();
 
 module.exports = async function (fastify, opts) {
@@ -78,6 +79,8 @@ module.exports = async function (fastify, opts) {
                 rating: avg,
                 numberOfRatings: count,
             });
+
+        await checkPreferencesAndSendNotificationToStoreMerchants(storeId, MerchantNotificationTypes.STORE_RATING_RECEIVED, {storeId, customerId, rating } )
 
         return reply.send({
             message: "Store review submitted successfully.",

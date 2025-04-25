@@ -3,10 +3,15 @@
 const knex = require('@database/knexInstance');
 const { v4: uuidv4 } = require('uuid');
 const { calculateBilling } = require('../../utils/calculateBilling');
+const {checkPreferencesAndSendNotificationToStoreMerchants, MerchantNotificationTypes} = require("../../services/PushNotificationsToMerchantsService");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async (request, reply) => {
         const { cartSummary, customerId, recipient, deliveryAddress } = request.body;
+
+        if (customerId!== request.user.customerId) {
+            return reply.status(401).send({ error: 'Unauthorized' });
+        }
 
         try {
             // Validate request data
@@ -103,6 +108,10 @@ module.exports = async function (fastify, opts) {
                         }));
 
                         await trx('order_items').insert(orderItems);
+
+                        const customer = await trx('customers').where('customerId', customerId).first();
+
+                        await checkPreferencesAndSendNotificationToStoreMerchants(storeId, MerchantNotificationTypes.NEW_ORDER, {orderId, orderTotal: billing.total, customerName: customer.fullName})
 
                         return {
                             orderId,

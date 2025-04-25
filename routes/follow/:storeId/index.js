@@ -1,6 +1,7 @@
 'use strict'
 
 const knex = require("@database/knexInstance");
+const {sendNotificationToStoreMerchants} = require("../../../services/PushNotificationsService");
 
 module.exports = async function (fastify, opts) {
   fastify.post('/', async (request, reply) => {
@@ -34,6 +35,8 @@ module.exports = async function (fastify, opts) {
       await knex('stores')
           .where({ storeId })
           .increment('followerCount', 1);
+
+      await sendNotificationToStoreMerchants(storeId, `You have a new follower: ${customerId}!`)
 
       return reply.status(200).send({ message: 'Followed the store successfully.' });
     } catch (err) {

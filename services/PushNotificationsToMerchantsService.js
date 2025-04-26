@@ -67,13 +67,13 @@ const MerchantNotificationTypes = {
 const NotificationChannels = {
     MERCHANT: {
         NEW_ORDER: 'orders',
-        NEW_MESSAGE: 'chat',
+        NEW_MESSAGE: 'chatMessages',
         ORDER_RETURN_REQUESTED: 'orders',
         ORDER_CANCELED_BY_CUSTOMER: 'orders',
-        PLATFORM_MESSAGE: 'miscellaneous',
+        MISCELLANEOUS: 'miscellaneous',
         PRODUCT_RATING_RECEIVED: 'ratings',
         STORE_RATING_RECEIVED: 'ratings',
-        NEW_FOLLOWER: 'social',
+        NEW_FOLLOWER: 'follows',
     },
 };
 
@@ -91,13 +91,13 @@ async function shouldNotifyMerchant(knex, merchantId, notificationType) {
         case 'NEW_ORDER':
             return prefs.newOrders;
         case 'NEW_MESSAGE':
-            return prefs.messages;
+            return prefs.chatMessages;
         case 'ORDER_RETURN_REQUESTED':
             return prefs.returnRequests;
         case 'ORDER_CANCELED_BY_CUSTOMER':
             return prefs.orderCancellations;
         case 'PLATFORM_MESSAGE':
-            return prefs.platformMessages;
+            return prefs.miscellaneous;
         case 'PRODUCT_RATING_RECEIVED':
         case 'STORE_RATING_RECEIVED':
             return prefs.ratingsAndReviews;

@@ -57,6 +57,17 @@ module.exports = async function (fastify, opts) {
                     isDefaultRecipient: true
                 });
 
+                // Insert customer notification preferences (defaults)
+                await trx('customerNotificationPreferences').insert({
+                    customerId: newCustomerId,
+                    orderStatus: true,
+                    orderDelivery: true,
+                    chatMessages: true,
+                    miscellaneous: true,
+                    muteAll: false,
+                });
+
+
                 return newCustomerId;
             });
 

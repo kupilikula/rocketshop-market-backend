@@ -6,8 +6,7 @@ const {deleteRefreshToken, verifyRefreshToken, deleteAllRefreshTokensForUser} = 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async (request, reply) => {
         const refreshToken = request.cookies.refreshToken;
-        const {expoPushToken} = request.body;
-        const { customerId } = request.user;
+        const {customerId, expoPushToken} = request.body;
 
         if (!refreshToken || !customerId) {
             return reply.status(400).send({ error: 'Bad Request: No refresh token  or customerId found' });

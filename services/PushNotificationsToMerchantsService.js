@@ -70,10 +70,10 @@ const NotificationChannels = {
         NEW_MESSAGE: 'chat',
         ORDER_RETURN_REQUESTED: 'orders',
         ORDER_CANCELED_BY_CUSTOMER: 'orders',
-        PLATFORM_MESSAGE: 'platform',
+        PLATFORM_MESSAGE: 'miscellaneous',
         PRODUCT_RATING_RECEIVED: 'ratings',
         STORE_RATING_RECEIVED: 'ratings',
-        NEW_FOLLOWER: 'promotions',
+        NEW_FOLLOWER: 'social',
     },
 };
 

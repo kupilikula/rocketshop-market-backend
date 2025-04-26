@@ -75,6 +75,9 @@ const getSalesEligibleOrderStatuses = () => [
 const getReviewEligibleOrderStatuses = () => [
     ...IN_PROGRESS_STATUSES,
     ...FULFILLED_STATUSES,
+    ...ON_HOLD_STATUSES,
+    ...CANCELED_OR_FAILED_STATUSES,
+    ...REFUNDED_OR_RETURNED_STATUSES,
 ];
 
 

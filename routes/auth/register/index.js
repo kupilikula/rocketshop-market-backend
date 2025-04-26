@@ -52,7 +52,7 @@ module.exports = async function (fastify, opts) {
 
             try {
                 // Perform all inserts in a single transaction
-                const [customer] = await knex.transaction(async (trx) => {
+                const customer = await knex.transaction(async (trx) => {
                     // Insert into customers
                     await trx('customers').insert({
                         customerId,

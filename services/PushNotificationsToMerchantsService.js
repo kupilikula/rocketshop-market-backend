@@ -153,7 +153,10 @@ async function checkPreferencesAndSendNotificationToStoreMerchants(storeId, noti
             sound: 'default',
             title: messagePayload.title,
             body: messagePayload.body,
-            data: messagePayload.data,
+            data: {
+                type: messagePayload.type,
+                ...messagePayload.data
+            },
             channelId,
         });
     }

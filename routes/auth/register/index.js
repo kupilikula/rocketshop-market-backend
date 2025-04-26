@@ -50,32 +50,56 @@ module.exports = async function (fastify, opts) {
         const customerId = uuidv4();
         const customerHandle = await generateCustomerHandle(fullName);
 
-        // Create customer
-        const [customer] = await knex('customers').insert({
-            customerId,
-            customerHandle,
-            phone,
-            fullName,
-            created_at: knex.fn.now()
-        }).returning('*');
+            try {
+                // Perform all inserts in a single transaction
+                const [customer] = await knex.transaction(async (trx) => {
+                    // Insert into customers
+                    await trx('customers').insert({
+                        customerId,
+                        customerHandle,
+                        phone,
+                        fullName,
+                        created_at: knex.fn.now(),
+                    });
 
-        if (!customer) {
-            return reply.status(500).send({ error: 'Failed to create customer' });
-        }
+                    // Insert default preferences
+                    await trx('customerNotificationPreferences').insert({
+                        customerId,
+                        orderStatus: true,
+                        orderDelivery: true,
+                        chatMessages: true,
+                        miscellaneous: true,
+                        muteAll: false,
+                        created_at: knex.fn.now(),
+                        updated_at: knex.fn.now(),
+                    });
 
-        //Create recipient for the new customer
-        await knex('recipients').insert({
-            recipientId: uuidv4(),
-            customerId: customer.customerId,
-            fullName: null,
-            phone: null,
-            type: 'SELF',
-            isDefaultRecipient: true,
-            created_at: knex.fn.now(),
-            updated_at: knex.fn.now()
-        });
+                    // Insert default SELF recipient
+                    await trx('recipients').insert({
+                        recipientId: uuidv4(),
+                        customerId,
+                        fullName: null,
+                        phone: null,
+                        type: 'SELF',
+                        isDefaultRecipient: true,
+                        created_at: knex.fn.now(),
+                        updated_at: knex.fn.now(),
+                    });
 
-        await TokenService.replyWithAuthTokens(reply, customer, {cartData: null});
+                    // Return created customer (for auth token generation)
+                    return trx('customers').where({ customerId }).first();
+                });
+
+                if (!customer) {
+                    return reply.status(500).send({ error: 'Failed to create customer' });
+                }
+
+                await TokenService.replyWithAuthTokens(reply, customer, { cartData: null });
+
+            } catch (error) {
+                request.log.error(error);
+                return reply.status(500).send({ error: 'Failed to create customer' });
+            }
     });
 }
 

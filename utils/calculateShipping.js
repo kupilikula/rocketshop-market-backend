@@ -42,11 +42,17 @@ const evaluateConditionSet = (when, address) => {
 
 // Helper: Evaluate cost formula with modifiers
 const evaluateFormula = (baseCost, modifiers, itemCount, orderTotal) => {
-    let cost = baseCost;
+    let cost = 0;
 
-    if (modifiers.extraPerItemEnabled) {
-        const extraItems = Math.max(0, itemCount - Number(modifiers.freeItemCount || 0));
-        cost += extraItems * Number(modifiers.extraPerItemCost || 0);
+    const extraEnabled = modifiers.extraPerItemEnabled;
+
+    if (extraEnabled) {
+        const freeItems = Number(modifiers.freeItemCount || 0);
+        const extraItems = Math.max(0, itemCount - freeItems);
+        cost = baseCost + (extraItems * Number(modifiers.extraPerItemCost || 0));
+    } else {
+        // 💡 Treat baseCost as per item if no extra item logic
+        cost = baseCost * itemCount;
     }
 
     if (modifiers.discountEnabled && orderTotal > Number(modifiers.discountThreshold || 0)) {

@@ -44,20 +44,20 @@ module.exports = async function (fastify, opts) {
                         const { storeId, storeName, storeLogoImage, billing, items } = storeGroup;
 
                         // Revalidate billing details
-                        const expectedBilling = await calculateBilling(storeId, items, null, deliveryAddress);
-                        if (
-                            billing.subtotal !== expectedBilling.subtotal ||
-                            billing.shipping !== expectedBilling.shipping ||
-                            billing.discount !== expectedBilling.discount ||
-                            billing.gst !== expectedBilling.gst ||
-                            billing.total !== expectedBilling.total
-                        ) {
-                            throw new Error(
-                                `Billing mismatch for store ${storeId}. Expected: ${JSON.stringify(
-                                    expectedBilling
-                                )}, Received: ${JSON.stringify(billing)}`
-                            );
-                        }
+                        const recomputedBilling = await calculateBilling(storeId, items, null, deliveryAddress);
+                        // if (
+                        //     billing.subtotal !== recomputedBilling.subtotal ||
+                        //     billing.shipping !== recomputedBilling.shipping ||
+                        //     billing.discount !== recomputedBilling.discount ||
+                        //     billing.gst !== recomputedBilling.gst ||
+                        //     billing.total !== recomputedBilling.total
+                        // ) {
+                        //     throw new Error(
+                        //         `Billing mismatch for store ${storeId}. Expected: ${JSON.stringify(
+                        //             recomputedBilling
+                        //         )}, Received: ${JSON.stringify(billing)}`
+                        //     );
+                        // }
 
                         // Validate and reserve stock for each product
                         for (const item of items) {
@@ -94,7 +94,7 @@ module.exports = async function (fastify, opts) {
                             customerId,
                             orderStatus: 'Order Created',
                             orderStatusUpdateTime: new Date(),
-                            orderTotal: billing.total,
+                            orderTotal: recomputedBilling.total,
                             orderDate: new Date(),
                             recipient: JSON.stringify(recipient), // Save delivery address as JSON
                             deliveryAddress: JSON.stringify(deliveryAddress), // Save delivery address as JSON
@@ -126,14 +126,14 @@ module.exports = async function (fastify, opts) {
 
                         const customer = await trx('customers').where('customerId', customerId).first();
 
-                        await checkPreferencesAndSendNotificationToStoreMerchants(storeId, MerchantNotificationTypes.NEW_ORDER, {orderId, orderTotal: billing.total, customerName: customer.fullName})
+                        await checkPreferencesAndSendNotificationToStoreMerchants(storeId, MerchantNotificationTypes.NEW_ORDER, {orderId, orderTotal: recomputedBilling.total, customerName: customer.fullName})
 
                         return {
                             orderId,
                             storeId,
                             storeName,
                             storeLogoImage,
-                            billing,
+                            billing: recomputedBilling,
                             items,
                         };
                     })

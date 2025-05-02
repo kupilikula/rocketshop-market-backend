@@ -4,10 +4,11 @@ const knex = require('@database/knexInstance');
 const { v4: uuidv4 } = require('uuid');
 const { calculateBilling } = require('../../utils/calculateBilling');
 const {checkPreferencesAndSendNotificationToStoreMerchants, MerchantNotificationTypes} = require("../../services/PushNotificationsToMerchantsService");
+const {computeCartSummaryHash} = require("../../utils/cartSummaryHash");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async (request, reply) => {
-        const { cartSummary, customerId, recipient, deliveryAddress } = request.body;
+        const { cartSummary, customerId, recipient, deliveryAddress, cartSummaryHash } = request.body;
 
         if (customerId!== request.user.customerId) {
             return reply.status(401).send({ error: 'Unauthorized' });
@@ -20,6 +21,20 @@ module.exports = async function (fastify, opts) {
             }
             if (!customerId || !recipient) {
                 return reply.status(400).send({ error: 'Customer ID or delivery address is missing.' });
+            }
+
+            const backendCartSummaryHash = computeCartSummaryHash(cartSummary);
+            if (cartSummaryHash !== backendCartSummaryHash) {
+                return reply.status(400).send({ error: 'Cart summary hash mismatch.' });
+            }
+
+            const alreadyCheckedOut = await knex('customer_cart_checkouts')
+                .where({ customerId, cartSummaryHash })
+                .andWhere('created_at', '>', knex.raw(`now() - interval '30 minutes'`))
+                .first();
+
+            if (alreadyCheckedOut) {
+                return reply.status(409).send({ error: 'Duplicate checkout detected for this cart (within 30 minutes).' });
             }
 
             // Wrap the entire checkout process in a transaction for atomicity
@@ -123,6 +138,11 @@ module.exports = async function (fastify, opts) {
                         };
                     })
                 );
+            });
+
+            await knex('customer_cart_checkouts').insert({
+                customerId,
+                cartSummaryHash,
             });
 
             return reply.send(createdOrders);

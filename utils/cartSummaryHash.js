@@ -4,7 +4,7 @@ const crypto = require('crypto');
  * Compute a stable cart hash from a cartSummary structure.
  * Only includes productId and quantity per item (ignores prices, metadata, etc).
  */
-export function computeCartSummaryHash(cartSummary) {
+function computeCartSummaryHash(cartSummary) {
     const normalizedItems = cartSummary
         .sort((a, b) => a.storeId.localeCompare(b.storeId))
         .flatMap(store =>
@@ -21,3 +21,5 @@ export function computeCartSummaryHash(cartSummary) {
 
     return crypto.createHash('sha256').update(serialized).digest('hex');
 }
+
+module.exports = { computeCartSummaryHash };

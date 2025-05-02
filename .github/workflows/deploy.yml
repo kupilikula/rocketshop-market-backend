@@ -28,6 +28,7 @@ jobs:
             rm -rf market-backend       
             mv tmp-market market-backend
             cd market-backend
+            cp ~/misc/market.dev.env .env
             echo 'Starting app.'
             pm2 start --name marketApi npm -- run dev --
             echo 'Deployment to digital ocean finished'

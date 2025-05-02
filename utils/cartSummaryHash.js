@@ -5,7 +5,7 @@ const crypto = require('crypto');
  * Only includes productId and quantity per item (ignores prices, metadata, etc).
  */
 function computeCartSummaryHash(cartSummary) {
-    const normalizedItems = cartSummary
+    const normalizedItems = [...cartSummary]
         .sort((a, b) => a.storeId.localeCompare(b.storeId))
         .flatMap(store =>
             (store.items || [])

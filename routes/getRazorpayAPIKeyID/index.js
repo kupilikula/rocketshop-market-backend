@@ -2,10 +2,10 @@
 
 module.exports = async function (fastify, opts) {
     fastify.get('/', async function (request, reply) {
-        const keyId = process.env.RAZORPAY_API_KEY_ID; // Use your exact env variable name
+        const keyId = process.env.RAZORPAY_KEY_ID; // Use your exact env variable name
 
         if (!keyId) {
-            fastify.log.error("RAZORPAY_API_KEY_ID environment variable is not set.");
+            fastify.log.error("RAZORPAY_KEY_ID environment variable is not set.");
             // Don't send detailed errors to client about server config
             reply.status(500).send({ error: 'Configuration error' });
             return;

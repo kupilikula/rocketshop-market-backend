@@ -10,8 +10,8 @@ const Razorpay = require('razorpay'); // Import Razorpay SDK
 // Initialize Razorpay SDK (Ideally once when your server starts, not per request)
 // Ensure you use the correct keys (Test for testing, Live for production)
 const razorpayInstance = new Razorpay({
-    key_id: process.env.RAZORPAY_API_KEY_ID,
-    key_secret: process.env.RAZORPAY_API_KEY_SECRET,
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 module.exports = async function (fastify, opts) {

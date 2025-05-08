@@ -31,7 +31,7 @@ async function calculateBilling(storeId, items, offerCodes, deliveryAddress = nu
         // Only add GST if the product price did NOT already include it
         const itemGstPortion = itemEntry.product.gstInclusive
             ? 0 // GST already in finalPrice, don't add again
-            : itemFinalValue * (itemEntry.product.gstRate / 100); // Calculate explicit tax
+            : itemFinalTaxableValue * (itemEntry.product.gstRate / 100); // Calculate explicit tax
         return sum + itemGstPortion;
     }, 0));
 

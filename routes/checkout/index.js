@@ -205,7 +205,7 @@ module.exports = async function (fastify, opts) {
             const razorpayOrderOptions = {
                 amount: totalAmountInPaise,
                 currency: 'INR',
-                receipt: `rcpt_${uuidv4()}`, // Unique receipt for this payment attempt
+                receipt: `${uuidv4()}`, // Unique receipt for this payment attempt
                 transfers: transferData,
                 notes: {
                     platform_order_ids: JSON.stringify(platformOrderDetailsForMapping.map(o => o.platformOrderId)),

@@ -1,90 +1,80 @@
-const {calculateDiscount} = require("./calculateDiscount");
-const {calculateShipping} = require("./calculateShipping");
+// src/utils/calculateBilling.js (Example path)
+const { calculateDiscount } = require('./calculateDiscount'); // Import refactored discount function
+const { calculateShipping } = require('./calculateShipping'); // Import shipping function (assumed correct)
+const { roundToTwoDecimals } = require('./roundToTwoDecimals'); // Import helper
 
 /**
- * Calculates the billing details for a store.
- * @param {string} storeId - The store's ID.
- * @param {Array} items - The list of items in the cart for the store.
- * @returns {Object} - The billing details including subtotal, shipping, discount, GST, and total.
+ * Calculates final billing details using item-level prices post-discount.
+ * @param {string} storeId
+ * @param {Array} items - Original cart items
+ * @param {Array<string>} offerCodes
+ * @param {Object} deliveryAddress
+ * @returns {Promise<Object>} - Billing details
  */
 async function calculateBilling(storeId, items, offerCodes, deliveryAddress = null) {
-    // Calculate subtotal
-    const subtotal = items.reduce(
-        (sum, item) => sum + item.product.price * item.quantity,
-        0
-    );
+    // Calculate original subtotal (sum of original prices * original quantities) for reference
+    const subtotal = roundToTwoDecimals(items.reduce(
+        (sum, item) => sum + item.product.price * item.quantity, 0
+    ));
 
-    // Calculate shipping cost
-    const shipping = (await calculateShipping(storeId, items, deliveryAddress));
+    // Calculate shipping (assume it returns a rounded value)
+    const shipping = await calculateShipping(storeId, items, deliveryAddress);
 
-    // Calculate discount
-    const {totalDiscount, appliedOffers} = (await calculateDiscount(storeId, items, offerCodes));
+    // Calculate discounts and get the final state of items after all discounts applied
+    const { totalDiscount, appliedOffers, finalItems } = await calculateDiscount(storeId, items, offerCodes);
 
+    // --- Calculate GST based on FINAL item prices and quantities ---
+    // itemGst here represents *only* the tax explicitly added for tax-exclusive items
+    let itemGst = roundToTwoDecimals(finalItems.reduce((sum, itemEntry) => {
+        // Use the final effective price and quantity for tax base
+        const itemFinalTaxableValue = itemEntry.finalPrice * itemEntry.finalQuantity;
+        // Only add GST if the product price did NOT already include it
+        const itemGstPortion = itemEntry.product.gstInclusive
+            ? 0 // GST already in finalPrice, don't add again
+            : itemFinalValue * (itemEntry.product.gstRate / 100); // Calculate explicit tax
+        return sum + itemGstPortion;
+    }, 0));
 
-    // ✅ **Calculate effective prices after discounts**
-    const effectivePrices = calculateEffectiveItemPrices(items, appliedOffers);
+    // --- Calculate GST on Shipping ---
+    let shippingGst = 0;
+    if (shipping > 0) {
+        // *** ASSUMPTION: Using the highest GST rate from the original items ***
+        // *** CONSULT A TAX ADVISOR FOR THE CORRECT RULE for composite supply ***
+        let shippingGstRate = 0;
+        if (items.length > 0) {
+            shippingGstRate = items.reduce((maxRate, item) => Math.max(maxRate, item.product.gstRate || 0), 0);
+        }
+        shippingGst = roundToTwoDecimals(shipping * (shippingGstRate / 100));
+        // console.log(`Applying ${shippingGstRate}% GST to shipping cost ${shipping}. GST: ${shippingGst}`);
+    }
 
-    // ✅ **Calculate GST on discounted price (excluding free items)**
-    const gst = effectivePrices.reduce((sum, item) => {
-        return sum + (item.product.gstInclusive
-            ? 0 // GST already included, no extra charge
-            : item.discountedPrice * item.quantity * item.product.gstRate / 100);
-    }, 0);
+    // --- Total Explicitly Added GST (for tax-exclusive items + shipping) ---
+    const totalGst = roundToTwoDecimals(itemGst + shippingGst);
 
-    // Calculate total
-    const total = parseFloat(subtotal + shipping - totalDiscount + gst);
+    // --- Calculate Final Total Payable ---
+    // This should be: Original Subtotal + Shipping + Total Explicit GST - Total Discount
+    // This formula correctly accounts for inclusive/exclusive pricing because:
+    // - 'subtotal' is based on listed prices (which might include tax implicitly)
+    // - 'totalGst' ONLY includes tax added explicitly for exclusive items + shipping
+    // - 'totalDiscount' is subtracted from the overall value.
+    const total = roundToTwoDecimals(subtotal + shipping + totalGst - totalDiscount);
+
+    // --- Sanity Check (Optional): Sum final item values + shipping + explicit shipping GST ---
+    // const finalItemValueTotal = roundToTwoDecimals(finalItems.reduce((sum, itemEntry) => sum + itemEntry.finalPrice * itemEntry.finalQuantity, 0));
+    // const checkTotal = roundToTwoDecimals(finalItemValueTotal + shipping + shippingGst); // Note: itemGst for exclusive items is already reflected in finalItemValueTotal difference from original subtotal if discounts applied
+    // console.log("Total Check:", { total, checkTotal, subtotal, shipping, totalGst, totalDiscount });
+    // --- End Sanity Check ---
 
     return {
-        subtotal,
-        shipping,
-        discount: totalDiscount,
+        subtotal,       // Original subtotal, rounded
+        shipping,       // Rounded
+        discount: totalDiscount, // Total discount applied, rounded
         appliedOffers,
-        gst,
-        total,
+        gst: totalGst,  // Total EXPLICITLY ADDED GST, rounded
+        total,          // Final total payable, rounded
+        _finalItems_debug: finalItems // Return final item state for debugging if needed
     };
 }
 
-/**
- * Adjusts the price of each item after applying discounts.
- * Ensures free items have ₹0 price, and only paid items contribute to GST.
- * @param {Array} items - The list of cart items.
- * @param {Array} appliedOffers - The list of applied offers.
- * @returns {Array} - Items with their final discounted prices.
- */
-function calculateEffectiveItemPrices(items, appliedOffers) {
-    const discountedItems = items.map(item => ({
-        ...item,
-        discountedPrice: item.product.price // Start with original price
-    }));
-
-    appliedOffers.forEach(offer => {
-        offer.applicableItems.forEach(appliedItem => {
-            const matchingItem = discountedItems.find(i => i.product.productId === appliedItem.product.productId);
-
-            if (matchingItem) {
-                if (offer.offerType === "Buy N Get K Free") {
-                    // Free items should have price = ₹0
-                    matchingItem.discountedPrice = matchingItem.product.price;
-                    matchingItem.quantity = appliedItem.effectiveQuantity; // Exclude free items
-                } else if (offer.offerType === "Percentage Off") {
-                    // Apply percentage discount
-                    matchingItem.discountedPrice *= (1 - offer.discountDetails.percentage / 100);
-                } else if (offer.offerType === "Fixed Amount Off") {
-                    // Apply fixed amount discount
-                    matchingItem.discountedPrice -= offer.discountDetails.fixedAmount;
-                    if (matchingItem.discountedPrice < 0) {
-                        matchingItem.discountedPrice = 0; // Avoid negative prices
-                    }
-                }
-            }
-        });
-    });
-
-    return discountedItems;
-}
-
-
-module.exports = {
-    calculateBilling,
-    calculateShipping,
-};
+// Export if needed
+module.exports = { calculateBilling };

@@ -6,6 +6,7 @@ const { calculateBilling } = require('../../utils/calculateBilling'); // Adjust 
 const { checkPreferencesAndSendNotificationToStoreMerchants, MerchantNotificationTypes } = require("../../services/PushNotificationsToMerchantsService"); // Adjust path
 const { computeCartSummaryHash } = require("../../utils/cartSummaryHash"); // Adjust path
 const Razorpay = require('razorpay');
+const {getCanceledOrFailedOrderStatuses} = require("../../utils/orderStatusList");
 
 // Initialize Razorpay SDK
 // Ensure you use the correct keys (Test for testing, Live for production)
@@ -40,15 +41,54 @@ module.exports = async function (fastify, opts) {
                 return reply.status(400).send({ error: 'Cart summary hash mismatch. Please refresh your cart.' });
             }
 
-            const alreadyCheckedOut = await knex('customer_cart_checkouts')
-                .where({ customerId, cartSummaryHash })
-                .andWhere('created_at', '>', knex.raw(`now() - interval '30 minutes'`))
-                .first();
+            // --- MODIFIED Duplicate Checkout Check ---
+            const failedOrCancelledStatuses = getCanceledOrFailedOrderStatuses();
+            const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-            if (alreadyCheckedOut) {
-                logger.info({ customerId, cartSummaryHash }, "Duplicate checkout detected within 30 minutes.");
-                return reply.status(409).send({ error: 'Duplicate checkout detected for this cart (within 30 minutes).' });
+            // Find the MOST RECENT checkout attempt for this cart/customer within window
+            const recentAttempt = await knex('customer_cart_checkouts')
+                .select('platformOrderIds') // Select the stored order IDs array
+                .where({ customerId, cartSummaryHash })
+                .andWhere('created_at', '>', thirtyMinutesAgo)
+                .orderBy('created_at', 'desc')
+                .first(); // Get only the latest one
+
+            if (recentAttempt) {
+                logger.info({ customerId, cartSummaryHash }, "Found recent checkout attempt. Checking associated order statuses...");
+                const previousOrderIds = recentAttempt.platformOrderIds; // This will be null or a JSON array
+
+                // Check if previousOrderIds is a valid array with actual IDs
+                if (Array.isArray(previousOrderIds) && previousOrderIds.length > 0) {
+                    // Fetch the statuses of these specific previous orders
+                    const previousOrders = await knex('orders')
+                        .select('orderStatus')
+                        .whereIn('orderId', previousOrderIds);
+
+                    // If we found corresponding orders in the orders table
+                    if (previousOrders.length > 0) {
+                        // Check if ALL previous orders are in a failed/cancelled state
+                        const allPreviousFailedOrCancelled = previousOrders.every(order =>
+                            failedOrCancelledStatuses.includes(order.orderStatus)
+                        );
+
+                        if (!allPreviousFailedOrCancelled) {
+                            // If *any* previous order is still pending or was successful, block this new attempt
+                            logger.warn({ customerId, cartSummaryHash, previousOrderIds }, "Blocking duplicate checkout: Previous attempt contains non-failed/non-cancelled orders.");
+                            return reply.status(409).send({ error: 'A recent checkout attempt for this cart is still processing, was successful, or is in an unexpected state. Please check your orders.' });
+                        } else {
+                            logger.info({ customerId, cartSummaryHash, previousOrderIds }, "Previous attempt orders were all failed/cancelled. Allowing new checkout attempt.");
+                            // Allow processing to continue
+                        }
+                    } else {
+                        logger.info({ customerId, cartSummaryHash, previousOrderIds }, "Previous checkout attempt recorded, but couldn't find associated orders (maybe deleted?). Allowing new checkout.");
+                        // Allow processing to continue
+                    }
+                } else {
+                    logger.info({ customerId, cartSummaryHash }, "Previous checkout attempt recorded but has no associated order IDs stored (or empty array). Allowing new checkout.");
+                    // Allow processing to continue if no order IDs were linked
+                }
             }
+            // --- End MODIFIED Duplicate Check ---
 
             // --- Create Platform Orders (within a transaction) ---
             const createdOrders = await knex.transaction(async (trx) => {

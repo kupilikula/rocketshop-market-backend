@@ -1,3 +1,5 @@
+// routes/checkout/index.js (Example path - assuming this is the customer app's checkout)
+
 'use strict';
 
 const knex = require('@database/knexInstance'); // Adjust path if needed
@@ -6,11 +8,9 @@ const { calculateBilling } = require('../../utils/calculateBilling'); // Adjust 
 const { checkPreferencesAndSendNotificationToStoreMerchants, MerchantNotificationTypes } = require("../../services/PushNotificationsToMerchantsService"); // Adjust path
 const { computeCartSummaryHash } = require("../../utils/cartSummaryHash"); // Adjust path
 const Razorpay = require('razorpay');
-const {getCanceledOrFailedOrderStatuses} = require("../../utils/orderStatusList");
+const { getCanceledOrFailedOrderStatuses } = require("../../utils/orderStatusList"); // Adjust path
 
-// Initialize Razorpay SDK
-// Ensure you use the correct keys (Test for testing, Live for production)
-// These should be YOUR PLATFORM's/PARTNER's API keys for creating Route orders
+// Initialize Razorpay SDK (using your Platform/Partner keys)
 const razorpayInstance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -18,21 +18,27 @@ const razorpayInstance = new Razorpay({
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async (request, reply) => {
-        const { cartSummary, customerId, recipient, deliveryAddress, cartSummaryHash } = request.body;
-        const logger = fastify.log; // Use Fastify logger
+        // Assuming authentication middleware adds request.user.customerId
+        const { cartSummary, customerId: requestCustomerId, recipient, deliveryAddress, cartSummaryHash } = request.body;
+        const logger = fastify.log;
+        const customerId = request.user?.customerId; // Get customerId from authenticated user
 
-        if (customerId !== request.user.customerId) {
-            logger.warn({ requestedCustomerId: customerId, authenticatedCustomerId: request.user.customerId }, "Unauthorized checkout attempt for different customer.");
+        // Authorization check
+        if (!customerId || customerId !== requestCustomerId) {
+            logger.warn({ requestCustomerId, authenticatedCustomerId: customerId }, "Unauthorized checkout attempt.");
             return reply.status(401).send({ error: 'Unauthorized' });
         }
 
         try {
             // --- Input Validations ---
-            if (!cartSummary || cartSummary.length === 0) {
+            if (!cartSummary || !Array.isArray(cartSummary) || cartSummary.length === 0) {
                 return reply.status(400).send({ error: 'Cart summary is missing or empty.' });
             }
-            if (!customerId || !recipient || !deliveryAddress) { // Added deliveryAddress check
-                return reply.status(400).send({ error: 'Customer ID, recipient, or delivery address is missing.' });
+            if (!recipient || !deliveryAddress) {
+                return reply.status(400).send({ error: 'Recipient or delivery address is missing.' });
+            }
+            if (!cartSummaryHash) {
+                return reply.status(400).send({ error: 'Cart summary hash is missing.' });
             }
 
             const backendCartSummaryHash = computeCartSummaryHash(cartSummary);
@@ -41,71 +47,58 @@ module.exports = async function (fastify, opts) {
                 return reply.status(400).send({ error: 'Cart summary hash mismatch. Please refresh your cart.' });
             }
 
-            // --- MODIFIED Duplicate Checkout Check ---
+            // --- Modified Duplicate Checkout Check ---
             const failedOrCancelledStatuses = getCanceledOrFailedOrderStatuses();
             const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-            // Find the MOST RECENT checkout attempt for this cart/customer within window
             const recentAttempt = await knex('customer_cart_checkouts')
-                .select('platformOrderIds') // Select the stored order IDs array
+                .select('platformOrderIds')
                 .where({ customerId, cartSummaryHash })
                 .andWhere('created_at', '>', thirtyMinutesAgo)
                 .orderBy('created_at', 'desc')
-                .first(); // Get only the latest one
+                .first();
 
             if (recentAttempt) {
-                logger.info({ customerId, cartSummaryHash }, "Found recent checkout attempt. Checking associated order statuses...");
-                const previousOrderIds = recentAttempt.platformOrderIds; // This will be null or a JSON array
+                logger.info({ customerId, cartSummaryHash }, "Found recent checkout attempt. Checking statuses...");
+                const previousOrderIds = recentAttempt.platformOrderIds; // Expecting JSON array from DB
 
-                // Check if previousOrderIds is a valid array with actual IDs
                 if (Array.isArray(previousOrderIds) && previousOrderIds.length > 0) {
-                    // Fetch the statuses of these specific previous orders
                     const previousOrders = await knex('orders')
                         .select('orderStatus')
                         .whereIn('orderId', previousOrderIds);
 
-                    // If we found corresponding orders in the orders table
                     if (previousOrders.length > 0) {
-                        // Check if ALL previous orders are in a failed/cancelled state
                         const allPreviousFailedOrCancelled = previousOrders.every(order =>
                             failedOrCancelledStatuses.includes(order.orderStatus)
                         );
-
                         if (!allPreviousFailedOrCancelled) {
-                            // If *any* previous order is still pending or was successful, block this new attempt
-                            logger.warn({ customerId, cartSummaryHash, previousOrderIds }, "Blocking duplicate checkout: Previous attempt contains non-failed/non-cancelled orders.");
-                            return reply.status(409).send({ error: 'A recent checkout attempt for this cart is still processing, was successful, or is in an unexpected state. Please check your orders.' });
+                            logger.warn({ customerId, cartSummaryHash }, "Blocking duplicate checkout: Previous attempt orders not failed/cancelled.");
+                            return reply.status(409).send({ error: 'A recent checkout attempt for this cart is still processing or was successful.' });
                         } else {
-                            logger.info({ customerId, cartSummaryHash, previousOrderIds }, "Previous attempt orders were all failed/cancelled. Allowing new checkout attempt.");
-                            // Allow processing to continue
+                            logger.info({ customerId, cartSummaryHash }, "Previous attempt failed/cancelled. Allowing new checkout.");
                         }
-                    } else {
-                        logger.info({ customerId, cartSummaryHash, previousOrderIds }, "Previous checkout attempt recorded, but couldn't find associated orders (maybe deleted?). Allowing new checkout.");
-                        // Allow processing to continue
-                    }
-                } else {
-                    logger.info({ customerId, cartSummaryHash }, "Previous checkout attempt recorded but has no associated order IDs stored (or empty array). Allowing new checkout.");
-                    // Allow processing to continue if no order IDs were linked
-                }
+                    } else { logger.info({ customerId, cartSummaryHash }, "Previous checkout attempt orders not found. Allowing new checkout."); }
+                } else { logger.info({ customerId, cartSummaryHash }, "Previous checkout attempt has no linked orders. Allowing new checkout."); }
             }
-            // --- End MODIFIED Duplicate Check ---
+            // --- End Duplicate Check ---
 
-            // --- Create Platform Orders (within a transaction) ---
+
+            // --- Create Platform Orders and Reserve Stock (Transaction) ---
+            let platformOrderIdsCreated = []; // Capture newly created IDs
             const createdOrders = await knex.transaction(async (trx) => {
-                return await Promise.all(
+                // Use Promise.all for parallel execution of independent store order creations
+                const mappedOrders = await Promise.all(
                     cartSummary.map(async (storeGroup) => {
-                        const { storeId, storeName, storeLogoImage, billing, items } = storeGroup;
+                        const { storeId, storeName, storeLogoImage, items } = storeGroup;
 
-                        const recomputedBilling = await calculateBilling(storeId, items, null, deliveryAddress);
-                        // Optional: Strict billing revalidation (uncomment if needed)
-                        // if (billing.total !== recomputedBilling.total /* || other fields */) {
-                        //     throw new Error(`Billing mismatch for store ${storeId}.`);
-                        // }
+                        // Pass trx to calculateBilling if it needs to query within the transaction
+                        const recomputedBilling = await calculateBilling(storeId, items, null, deliveryAddress /*, trx */);
 
+                        // Reserve stock within transaction
                         for (const item of items) {
                             const product = await trx('products')
                                 .where('productId', item.product.productId)
-                                .forUpdate()
+                                .forUpdate() // Lock row
                                 .first();
                             if (!product) throw new Error(`Product not found: ${item.product.productId}`);
                             const availableStock = product.stock - product.reservedStock;
@@ -117,132 +110,184 @@ module.exports = async function (fastify, opts) {
                                 .increment('reservedStock', item.quantity);
                         }
 
+                        // Create order record
                         const orderId = uuidv4();
+                        platformOrderIdsCreated.push(orderId); // Capture the ID
                         await trx('orders').insert({
                             orderId, storeId, customerId,
-                            orderStatus: 'Order Created', orderStatusUpdateTime: new Date(),
-                            orderTotal: recomputedBilling.total, orderDate: new Date(),
+                            orderStatus: 'Order Created', orderStatusUpdateTime: knex.fn.now(), // Use DB now
+                            orderTotal: recomputedBilling.total, orderDate: knex.fn.now(), // Use DB now
                             recipient: JSON.stringify(recipient),
                             deliveryAddress: JSON.stringify(deliveryAddress),
+                            // paymentId column assumed to exist, remains null initially
+                            // created_at, updated_at handled by timestamps(true, true)
                         });
+
+                        // Create history record
                         await trx('order_status_history').insert({
                             orderStatusId: uuidv4(), orderId, orderStatus: 'Order Created'
+                            // notes column assumed to exist, null initially
                         });
+
+                        // Create order items
                         const orderItemsData = items.map(item => ({
                             orderId, productId: item.product.productId,
                             price: item.product.price, quantity: item.quantity,
                         }));
                         await trx('order_items').insert(orderItemsData);
 
-                        const customer = await trx('customers').where('customerId', customerId).first();
-                        await checkPreferencesAndSendNotificationToStoreMerchants(
-                            storeId, MerchantNotificationTypes.NEW_ORDER,
-                            { orderId, orderTotal: recomputedBilling.total, customerName: customer.fullName }
-                        );
+                        // Send notification (outside transaction or carefully managed)
+                        // Consider moving notification logic outside the main transaction if it involves external calls
+                        try {
+                            const customer = await trx('customers').where('customerId', customerId).first(); // Fetch inside trx if needed
+                            await checkPreferencesAndSendNotificationToStoreMerchants(
+                                storeId, MerchantNotificationTypes.NEW_ORDER,
+                                { orderId, orderTotal: recomputedBilling.total, customerName: customer.fullName }
+                            );
+                        } catch (notificationError) {
+                            logger.error({ err: notificationError, storeId, orderId }, "Failed to send new order notification within transaction.");
+                            // Decide if this should fail the transaction - likely not.
+                        }
 
+                        // Return data needed later
                         return {
                             orderId, storeId, storeName, storeLogoImage,
-                            billing: recomputedBilling, // Use recomputed billing
-                            items,
+                            billing: recomputedBilling,
+                            items, // Keep items if needed downstream, otherwise omit
                         };
-                    })
-                );
+                    }) // End map
+                ); // End Promise.all
+                return mappedOrders;
+            }); // End Transaction
+            logger.info({ customerId, orderCount: createdOrders.length }, "Platform orders created and stock reserved successfully.");
+
+            // --- Record checkout attempt ---
+            await knex('customer_cart_checkouts').insert({
+                customerId,
+                cartSummaryHash,
+                platformOrderIds: JSON.stringify(platformOrderIdsCreated), // Store created order IDs
+                created_at: new Date()
             });
-            logger.info({ customerId, orderCount: createdOrders.length }, "Platform orders created successfully.");
+            logger.info({ customerId, cartSummaryHash, createdOrderCount: platformOrderIdsCreated.length }, "Checkout attempt recorded.");
 
-            // Record this checkout attempt
-            await knex('customer_cart_checkouts').insert({ customerId, cartSummaryHash });
-
-            // --- Prepare Data for Razorpay Order with Transfers ---
+            // --- Prepare Data for Razorpay Order with Conditional Transfers ---
             let totalAmountInPaise = 0;
             const transferData = [];
-            const platformOrderDetailsForMapping = []; // To store { platformOrderId, storeId }
+            let expectedTransferTotalInPaise = 0; // Track expected transfer total
+
+            // Fetch ownership status for all stores involved
+            const storeIdsInOrder = createdOrders.map(o => o.storeId);
+            const storeDetailsMap = new Map();
+            if (storeIdsInOrder.length > 0) {
+                const storesData = await knex('stores')
+                    .select('storeId', 'isPlatformOwned') // Get the flag
+                    .whereIn('storeId', storeIdsInOrder);
+                storesData.forEach(s => storeDetailsMap.set(s.storeId, s));
+            }
 
             for (const order of createdOrders) {
                 const storeId = order.storeId;
-                const orderTotal = parseFloat(order.billing.total);
-                if (isNaN(orderTotal)) {
-                    logger.error({ platformOrderId: order.orderId }, "Invalid billing total for platform order.");
+                const orderTotalInPaise = Math.round(parseFloat(order.billing.total) * 100);
+                if (isNaN(orderTotalInPaise)) {
                     throw new Error(`Invalid billing total for order ${order.orderId}`);
                 }
-                const orderTotalInPaise = Math.round(orderTotal * 100);
                 totalAmountInPaise += orderTotalInPaise;
-                platformOrderDetailsForMapping.push({ platformOrderId: order.orderId, storeId: order.storeId });
 
-                // --- >>> FETCH Razorpay Account ID using NEW SCHEMA <<< ---
-                const accountLink = await knex('store_razorpay_links as srl')
-                    .innerJoin('razorpay_credentials as rc', 'srl.razorpayCredentialId', 'rc.credentialId')
-                    .select('rc.razorpayAccountId') // This is the 'acc_...' ID
-                    .where('srl.storeId', storeId)
-                    .first();
+                const storeInfo = storeDetailsMap.get(storeId);
+                // Default to false (third-party) if store info somehow missing after creation
+                const isPlatformStore = storeInfo?.isPlatformOwned || false;
 
-                if (!accountLink || !accountLink.razorpayAccountId) {
-                    logger.error(`Razorpay account ID not found for storeId: ${storeId}. Payment cannot proceed for this store.`);
-                    // This is a critical setup error.
-                    // Consider how to handle this: Fail entire payment, or allow partial payment?
-                    // For now, failing the entire payment attempt.
-                    throw new Error(`Store ${order.storeName || storeId} is not configured for payments.`);
+                if (isPlatformStore) {
+                    // Platform-owned store: Skip transfer
+                    logger.info({ storeId, platformOrderId: order.orderId }, "Skipping Razorpay transfer for platform-owned store.");
+                } else {
+                    // Third-party store: Find linked Razorpay account and add transfer
+                    logger.info({ storeId, platformOrderId: order.orderId }, "Adding transfer for third-party store.");
+                    const accountLink = await knex('store_razorpay_links as srl')
+                        .innerJoin('razorpay_credentials as rc', 'srl.razorpayCredentialId', 'rc.credentialId')
+                        .select('rc.razorpayAccountId') // The 'acc_...' ID
+                        .where('srl.storeId', storeId)
+                        .first();
+
+                    if (!accountLink || !accountLink.razorpayAccountId) {
+                        logger.error(`Razorpay account link not found for third-party storeId: ${storeId}. Checkout cannot proceed.`);
+                        throw new Error(`Store ${order.storeName || storeId} is not configured for payments.`);
+                    }
+
+                    transferData.push({
+                        account: accountLink.razorpayAccountId,
+                        amount: orderTotalInPaise,
+                        currency: 'INR',
+                        notes: { platform_order_id: order.orderId }
+                    });
+                    expectedTransferTotalInPaise += orderTotalInPaise; // Add to expected transfer sum
                 }
-                // --- >>> END FETCH <<< ---
+            } // End for loop
 
-                transferData.push({
-                    account: accountLink.razorpayAccountId,
-                    amount: orderTotalInPaise,
-                    currency: 'INR',
-                    notes: { platform_order_id: order.orderId } // Good for reconciliation
-                });
+            // Basic validation checks
+            if (totalAmountInPaise <= 0) { throw new Error("Total payment amount must be positive."); }
+            const actualTransferTotal = transferData.reduce((sum, t) => sum + t.amount, 0);
+            if (actualTransferTotal !== expectedTransferTotalInPaise) {
+                logger.error({ expectedTransferTotalInPaise, actualTransferTotal }, "Transfer amount calculation mismatch!");
+                throw new Error('Internal calculation error: Transfer amount mismatch.');
             }
 
-            if (totalAmountInPaise <= 0) {
-                logger.error({ totalAmountInPaise }, "Calculated total payment amount is not positive.");
-                throw new Error("Total payment amount must be positive.");
-            }
-            // Optional Sanity Check (already present in your code)
-            const totalTransferAmount = transferData.reduce((sum, t) => sum + t.amount, 0);
-            if (totalTransferAmount !== totalAmountInPaise) { /* ... log and throw ... */ }
-
-
+            // --- Create Razorpay Order ---
             const razorpayOrderOptions = {
                 amount: totalAmountInPaise,
                 currency: 'INR',
-                receipt: `${uuidv4()}`, // Unique receipt for this payment attempt
-                transfers: transferData,
+                receipt: uuidv4(), // Use simple UUID for receipt
                 notes: {
-                    platform_order_ids: JSON.stringify(platformOrderDetailsForMapping.map(o => o.platformOrderId)),
+                    platform_order_ids: JSON.stringify(platformOrderIdsCreated),
                     customerId: customerId,
                 }
             };
 
-            logger.info({ options: razorpayOrderOptions }, "Creating Razorpay order with transfers...");
-            const razorpayOrder = await razorpayInstance.orders.create(razorpayOrderOptions);
+            // Only add transfers key if there are actual transfers to make
+            if (transferData.length > 0) {
+                razorpayOrderOptions.transfers = transferData;
+                logger.info({ transferCount: transferData.length }, "Creating Razorpay order WITH transfers...");
+            } else {
+                logger.info("Creating Razorpay order WITHOUT transfers (all platform items).");
+            }
+
+            console.log('razorpayOrderOptions: ', razorpayOrderOptions);
+            let razorpayOrder;
+            try {
+                razorpayOrder = await razorpayInstance.orders.create(razorpayOrderOptions);
+                console.log('razorpayOrder: ', razorpayOrder);
+            } catch (razorpayError) {
+                console.log('razorpayError: ', razorpayError);
+                logger.error({ err: razorpayError }, "Failed to create Razorpay order.");
+                throw new Error('Failed to create Razorpay order.');
+            }
 
             if (!razorpayOrder || !razorpayOrder.id) {
-                logger.error({ options: razorpayOrderOptions, response: razorpayOrder }, "Failed to create Razorpay order - invalid response from Razorpay.");
-                throw new Error('Failed to create Razorpay order with payment gateway.');
+                logger.error({ options: razorpayOrderOptions, response: razorpayOrder }, "Invalid response from Razorpay order creation.");
+                throw new Error('Failed to create Razorpay order.');
             }
             logger.info({ razorpayOrderId: razorpayOrder.id }, "Razorpay order created successfully.");
 
-            // --- >>> NEW: Populate razorpay_order_mapping Table <<< ---
-            const mappingInserts = platformOrderDetailsForMapping.map(detail => ({
-                razorpayOrderId: razorpayOrder.id, // The aggregate RZP order ID
-                platformOrderId: detail.platformOrderId, // Individual platform order ID
-                // created_at, updated_at should be handled by DB defaults/timestamps(true,true)
+            // --- Populate razorpay_order_mapping Table ---
+            const mappingInserts = platformOrderIdsCreated.map(orderId => ({
+                razorpayOrderId: razorpayOrder.id,
+                platformOrderId: orderId,
             }));
-
             if (mappingInserts.length > 0) {
                 await knex('razorpay_order_mapping').insert(mappingInserts);
                 logger.info({ count: mappingInserts.length, razorpayOrderId: razorpayOrder.id }, "Razorpay order mappings created.");
             }
-            // --- >>> END POPULATE MAPPING <<< ---
+            // --- End Populate Mapping ---
 
+            // --- Final Success Response ---
             return reply.send({
-                platformOrders: createdOrders,
-                razorpayOrderId: razorpayOrder.id // This is what the frontend needs for Razorpay Checkout
+                platformOrders: createdOrders.map(({ items, ...order }) => order), // Maybe exclude full items list from response?
+                razorpayOrderId: razorpayOrder.id
             });
 
         } catch (error) {
             logger.error({ err: error, customerId }, "Checkout process failed.");
-            // Provide a user-friendly error message if possible, log detailed error.
+            // Consider more specific status codes based on error type if possible
             return reply.status(500).send({ error: 'Failed to process checkout.', details: error.message });
         }
     });

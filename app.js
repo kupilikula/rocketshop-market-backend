@@ -12,11 +12,29 @@ const options = {}
 module.exports = async function (fastify, opts) {
   // Place here your custom code!
 
+  const allowedOrigins = [
+    'http://localhost:8081', // Your Expo web dev server (default port)
+    'http://localhost:8080', // Another common Expo web port
+    'http://localhost:19006',// Another common Expo web port for Metro
+    'https://rocketshop.in',   // Your production frontend domain
+    // Add any other origins you need to support (e.g., staging domains)
+  ];
+
   fastify.register(cors, {
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'], // Headers allowed
-    credentials: true // Allow cookies and Authorization headers
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, Postman)
+      // or if the origin is in our allowlist
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true); // Reflects the request origin in Access-Control-Allow-Origin
+                              // or you can pass the specific 'origin' value: callback(null, origin);
+      } else {
+        callback(new Error('Not allowed by CORS'), false);
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Ensure OPTIONS is included
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    // exposedHeaders: ['Content-Length', 'X-Kuma-Revision'], // Optional: if your frontend needs to access other headers
   });
 
   fastify.register(require('@fastify/rate-limit'), {

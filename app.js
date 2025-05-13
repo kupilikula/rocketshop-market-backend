@@ -16,6 +16,7 @@ module.exports = async function (fastify, opts) {
     'http://localhost:8081', // Your Expo web dev server (default port)
     'http://localhost:8080', // Another common Expo web port
     'http://localhost:19006',// Another common Expo web port for Metro
+    'https://qa.rocketshop.in',   // Your production frontend domain
     'https://rocketshop.in',   // Your production frontend domain
     // Add any other origins you need to support (e.g., staging domains)
   ];

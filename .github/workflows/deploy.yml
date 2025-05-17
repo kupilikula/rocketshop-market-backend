@@ -82,6 +82,7 @@ jobs:
             DB_SSL='${{ secrets.QA_DB_SSL }}'
             SPACES_ACCESS_KEY_ID='${{ secrets.QA_SPACES_ACCESS_KEY_ID }}'
             SPACES_SECRET_KEY='${{ secrets.QA_SPACES_SECRET_KEY }}'
+            SPACES_MEDIA_BUCKET='${{ secrets.QA_SPACES_MEDIA_BUCKET }}'
             JWT_SECRET='${{ secrets.QA_JWT_SECRET }}'
             JWT_REFRESH_SECRET='${{ secrets.QA_JWT_REFRESH_SECRET }}'
             SMS_COUNTRY_AUTH_KEY='${{ secrets.QA_SMS_COUNTRY_AUTH_KEY }}'

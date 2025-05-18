@@ -1,6 +1,7 @@
 'use strict';
 
 const knex = require("@database/knexInstance");
+const {isValidEmail, isValidE164Phone} = require("../../../../utils/validateIdentifier");
 
 module.exports = async function (fastify, opts) {
   fastify.patch('/', async (request, reply) => {
@@ -17,6 +18,14 @@ module.exports = async function (fastify, opts) {
       // Validate at least one field is provided
       if (!fullName && !email && !phone && !customerHandle) {
         return reply.status(400).send({ error: 'No valid fields provided for update.' });
+      }
+
+      if (email && !isValidEmail(email)) {
+        return reply.status(400).send({ error: 'Invalid email address.' });
+      }
+
+      if (phone && !isValidE164Phone(phone)) {
+        return reply.status(400).send({ error: 'Invalid phone number.' });
       }
 
       // If customerHandle is provided, check for uniqueness

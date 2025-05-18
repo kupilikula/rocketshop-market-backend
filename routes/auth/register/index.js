@@ -4,6 +4,7 @@ const knex = require("@database/knexInstance");
 const { v4: uuidv4 } = require('uuid');
 const TokenService = require('../../../services/TokenService')
 const {OTP_EXPIRY_MINUTES} = require("../../../utils/constants");
+const {isValidEmail, isValidE164Phone} = require("../../../utils/validateIdentifier");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/',
@@ -16,22 +17,51 @@ module.exports = async function (fastify, opts) {
             }
         },
         async function (request, reply) {
-        const { phone, otp, fullName } = request.body;
+        const { identifier, type, otp, fullName } = request.body;
 
-        if (!phone || !otp || !fullName ) {
+        if (!identifier || !type || !otp || !fullName ) {
             return reply.status(400).send({ error: 'Missing required fields' });
         }
 
-        const existingCustomer = await knex('customers').where({ phone }).first();
+        if (type === 'email' && !isValidEmail(identifier)) {
+            return reply.status(400).send({ message: 'Invalid email format.' });
+        } else if (type === 'phone' && !isValidE164Phone(identifier)) {
+            return reply.status(400).send({ message: 'Invalid phone number format. Expected E.164 (e.g., +919876543210).' });
+        }
+        if (!fullName.trim()) {
+            return reply.status(400).send({ message: 'Full name cannot be empty.' });
+        }
+
+        // 2. Check if user already exists
+        let existingUserQuery = knex('customers');
+        if (type === 'phone') {
+            existingUserQuery = existingUserQuery.where({ phone: identifier });
+        } else { // type === 'email'
+            existingUserQuery = existingUserQuery.where({ email: identifier });
+        }
+
+        const existingCustomer = await existingUserQuery.first();
         if (existingCustomer) {
-            return reply.status(400).send({ error: 'User already registered' });
+            return reply.status(409).send({ error: 'User already registered' });
         }
 
         // Verify latest OTP
-        const latestOtpRow = await knex('otp_verification')
-            .where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' })
+        let otpQuery = knex('otp_verification')
+            .where({
+                context: 'AUTH_LOGIN', // Assuming registration flow uses AUTH_LOGIN context
+                app: 'marketplace',
+                identifier_type: type,
+                otp: otp // Match the OTP itself
+            })
             .orderBy('created_at', 'desc')
             .first();
+
+        if (type === 'phone') {
+            otpQuery = otpQuery.andWhere({ phone: identifier });
+        } else { // type === 'email'
+            otpQuery = otpQuery.andWhere({ email: identifier });
+        }
+        const latestOtpRow = await otpQuery;
 
         if (!latestOtpRow || latestOtpRow.otp !== otp || !latestOtpRow.isVerified) {
             return reply.status(401).send({ error: 'Invalid or expired OTP' });
@@ -57,9 +87,11 @@ module.exports = async function (fastify, opts) {
                     await trx('customers').insert({
                         customerId,
                         customerHandle,
-                        phone,
+                        phone: type === 'phone' ? identifier : null,
+                        email: type === 'email' ? identifier : null,
                         fullName,
                         created_at: knex.fn.now(),
+                        updated_at: knex.fn.now() // Also set updated_at on creation
                     });
 
                     // Insert default preferences

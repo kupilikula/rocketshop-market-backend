@@ -3,6 +3,7 @@
 const knex = require("@database/knexInstance");
 const TokenService = require('../../../services/TokenService')
 const {OTP_EXPIRY_MINUTES} = require("../../../utils/constants");
+const {isValidEmail, isValidE164Phone} = require("../../../utils/validateIdentifier");
 
 module.exports = async function (fastify, opts) {
     fastify.post('/',
@@ -15,17 +16,35 @@ module.exports = async function (fastify, opts) {
             }
         },
         async function (request, reply) {
-        const { phone, otp} = request.body;
+        const { identifier, type, otp} = request.body;
 
-        if (!phone || !otp ) {
-            return reply.status(400).send({ error: 'Phone and OTP are required' });
+        if (!identifier || !type || !otp ) {
+            return reply.status(400).send({ error: 'Phone/Email and OTP are required' });
+        }
+
+        if (type === 'email' && !isValidEmail(identifier)) {
+            return reply.status(400).send({ message: 'Invalid email format.' });
+        } else if (type === 'phone' && !isValidE164Phone(identifier)) {
+            return reply.status(400).send({ message: 'Invalid phone number format. Expected E.164 (e.g., +919876543210).' });
         }
 
         // Verify OTP
-        const otpRecord = await knex('otp_verification')
-            .where({ phone, app: 'marketplace', context: 'AUTH_LOGIN' })
+        let otpQuery = knex('otp_verification')
+            .where({
+                context: 'AUTH_LOGIN', // Login flow uses AUTH_LOGIN context
+                app: 'marketplace',
+                identifier_type: type,
+                otp: otp // Match the OTP itself
+            })
             .orderBy('created_at', 'desc')
             .first();
+
+        if (type === 'phone') {
+            otpQuery = otpQuery.andWhere({ phone: identifier });
+        } else { // type === 'email'
+            otpQuery = otpQuery.andWhere({ email: identifier });
+        }
+        const otpRecord = await otpQuery;
 
         if (!otpRecord || otpRecord.otp !== otp || !otpRecord.isVerified) {
             return reply.status(401).send({ error: 'Invalid OTP' });
@@ -39,9 +58,13 @@ module.exports = async function (fastify, opts) {
         }
 
         // Check if user exists
-        const customer = await knex('customers')
-            .where({ phone })
-            .first();
+        let userQuery = knex('customers');
+        if (type === 'phone') {
+            userQuery = userQuery.where({ phone: identifier });
+        } else if (type==='email'){
+            userQuery = userQuery.where({ email: identifier });
+        }
+        const customer = await userQuery.first();
 
         if (!customer) {
             // New user — Frontend should call /auth/register next

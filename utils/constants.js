@@ -1,3 +1,4 @@
 
 const OTP_EXPIRY_MINUTES = 10;
-module.exports = { OTP_EXPIRY_MINUTES };
+const MAX_OTP_ATTEMPTS = 5;
+module.exports = { OTP_EXPIRY_MINUTES, MAX_OTP_ATTEMPTS };

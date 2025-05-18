@@ -3,7 +3,10 @@
 const knex = require("@database/knexInstance");
 const {OTP_PUBLIC_CONTEXTS, OTP_PRIVATE_CONTEXTS} = require("../../utils/OtpContexts");
 const smsService = require("../../services/SMSService");
+// const emailService = require("../../services/EmailService"); // Assuming you create this
 const {getOtpText} = require("../../utils/getOtpText");
+const {isValidEmail, isValidE164Phone} = require("../../utils/validateIdentifier");
+
 
 module.exports = async function (fastify, opts) {
     fastify.post('/',
@@ -16,11 +19,19 @@ module.exports = async function (fastify, opts) {
             }
         },
         async function (request, reply) {
-        const { phone, context } = request.body;
+        const { identifier, type, context } = request.body;
 
-        if (!phone || !context) {
-            return reply.status(400).send({ error: 'Phone number and context is required' });
+        if (!identifier || !type || !context) {
+            return reply.status(400).send({ error: 'Identifier (Phone number / Email) and context is required' });
         }
+
+            if (type === 'email' && !isValidEmail(identifier)) {
+                return reply.status(400).send({ message: 'Invalid email format.' });
+            } else if (type === 'phone' && !isValidE164Phone(identifier)) {
+                // Assuming E.164 format for international numbers from your frontend PhoneInput
+                // Adjust validation if your phone format expectation is different
+                return reply.status(400).send({ message: 'Invalid phone number format. Expected E.164 (e.g., +919876543210).' });
+            }
 
         const isPublicContext = OTP_PUBLIC_CONTEXTS.includes(context);
         const isPrivateContext = OTP_PRIVATE_CONTEXTS.includes(context);
@@ -48,7 +59,8 @@ module.exports = async function (fastify, opts) {
 
         // Store in otp_verification table
         await knex('otp_verification').insert({
-            phone,
+            phone: type === 'phone' ? identifier : null,
+            email: type === 'email' ? identifier : null,
             otp,
             app: 'marketplace',
             context,
@@ -57,31 +69,55 @@ module.exports = async function (fastify, opts) {
         });
 
         // OPTIONAL: Integrate SMS sending here
-        console.log(`Sending OTP ${otp} to phone ${phone}`);
+        console.log(`Sending OTP ${otp} to phone/email ${identifier}`);
 
         // Generate OTP message and send SMS
         // try {
         //     const message = getOtpText(otp);
-        //     await smsService.sendSMS(request.body.phone, message);
+        //      if (type === 'email') {
+        //          await emailService.sendOtpEmail(identifier, message); // Pass context if template varies
+        //      } else {
+        //          await smsService.sendSMS(request.body.phone, message);
+        //      }
         // } catch (error) {
-        //     console.error('Failed to send OTP SMS:', error);
+        //     console.error('Failed to send OTP :', error, identifier, type, context);
         //     // Optionally, you might want to delete the OTP record if SMS fails
-        //     await knex('otp_verification')
-        //         .where({ phone: request.body.phone, otp })
+        //      if (type==='phone') {
+        //          await knex('otp_verification')
+        //         .where({ phone: request.body.identifier, otp })
         //         .delete();
+        //      } else if (type==='email') {
+        //          await knex('otp_verification')
+        //         .where({ email: request.body.identifier, otp })
+        //         .delete();
+        //
+        //      }
         //     return reply.status(500).send({ error: 'Failed to send OTP' });
         // }
 
 
         if (context==='AUTH_LOGIN') {
             // Check if user already exists
-            const existingCustomer = await knex('customers')
-                .where({phone})
-                .first();
+            try {
+                let existingCustomer = null;
+                if (type === 'email') {
+                    existingCustomer = await knex('customers')
+                        .where({email: identifier})
+                        .first();
+                } else if (type === 'phone') {
+                    existingCustomer = await knex('customers')
+                        .where({phone: identifier})
+                        .first();
+                }
 
-            return reply.status(200).send({
-                isRegistered: !!existingCustomer // true or false
-            });
+                return reply.status(200).send({
+                    isRegistered: !!existingCustomer // true or false
+                });
+            } catch (error) {
+                console.error('Failed to check if user exists :', error, identifier, type, context);
+                return reply.status(500).send({ error: 'Failed to check if user exists' });
+            }
         }
-    });
+        return reply.status(200).send({ message: 'OTP sent successfully.' });
+        });
 }

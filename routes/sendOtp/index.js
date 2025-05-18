@@ -72,28 +72,29 @@ module.exports = async function (fastify, opts) {
         console.log(`Sending OTP ${otp} to phone/email ${identifier}`);
 
         // Generate OTP message and send SMS
-        // try {
-        //     const message = getOtpText(otp);
-        //      if (type === 'email') {
-        //          await emailService.sendOtpEmail(identifier, message); // Pass context if template varies
-        //      } else {
-        //          await smsService.sendSMS(request.body.phone, message);
-        //      }
-        // } catch (error) {
-        //     console.error('Failed to send OTP :', error, identifier, type, context);
-        //     // Optionally, you might want to delete the OTP record if SMS fails
-        //      if (type==='phone') {
-        //          await knex('otp_verification')
-        //         .where({ phone: request.body.identifier, otp })
-        //         .delete();
-        //      } else if (type==='email') {
-        //          await knex('otp_verification')
-        //         .where({ email: request.body.identifier, otp })
-        //         .delete();
-        //
-        //      }
-        //     return reply.status(500).send({ error: 'Failed to send OTP' });
-        // }
+        try {
+            const message = getOtpText(otp);
+             if (type === 'email') {
+                 // await emailService.sendOtpEmail(identifier, message); // Pass context if template varies
+                 console.log('email sent');
+             } else {
+                 await smsService.sendSMS(request.body.phone, message);
+             }
+        } catch (error) {
+            console.error('Failed to send OTP :', error, identifier, type, context);
+            // Optionally, you might want to delete the OTP record if SMS fails
+             if (type==='phone') {
+                 await knex('otp_verification')
+                .where({ phone: request.body.identifier, otp })
+                .delete();
+             } else if (type==='email') {
+                 await knex('otp_verification')
+                .where({ email: request.body.identifier, otp })
+                .delete();
+
+             }
+            return reply.status(500).send({ error: 'Failed to send OTP' });
+        }
 
 
         if (context==='AUTH_LOGIN') {

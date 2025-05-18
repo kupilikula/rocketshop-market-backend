@@ -78,7 +78,7 @@ module.exports = async function (fastify, opts) {
                  // await emailService.sendOtpEmail(identifier, message); // Pass context if template varies
                  console.log('email sent');
              } else {
-                 await smsService.sendSMS(request.body.identifier, message);
+                 await smsService.sendSMS(request.body.identifier.slice(1), message);
              }
         } catch (error) {
             console.error('Failed to send OTP :', error, identifier, type, context);

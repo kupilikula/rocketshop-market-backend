@@ -61,6 +61,7 @@ module.exports = async function (fastify, opts) {
         await knex('otp_verification').insert({
             phone: type === 'phone' ? identifier : null,
             email: type === 'email' ? identifier : null,
+            identifier_type: type,
             otp,
             app: 'marketplace',
             context,

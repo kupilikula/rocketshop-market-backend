@@ -48,6 +48,7 @@ module.exports = async function (fastify, opts) {
       if (customerHandle) updateFields.customerHandle = customerHandle;
 
       // Update the customer record
+
       const [newCustomerData] = await knex('customers')
           .where({ customerId })
           .update(updateFields)
@@ -56,6 +57,13 @@ module.exports = async function (fastify, opts) {
       return reply.status(200).send({customer: newCustomerData});
     } catch (error) {
       request.log.error(error);
+      // Check for unique constraint violation
+      if (error.code === '23505' && error.constraint === 'customers_email_unique') {
+        return reply.status(400).send({
+          error: 'Email address is already in use by another customer.'
+        });
+      }
+
       return reply.status(500).send({ error: 'Failed to update customer information.' });
     }
   });

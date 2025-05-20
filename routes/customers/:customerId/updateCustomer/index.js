@@ -63,6 +63,11 @@ module.exports = async function (fastify, opts) {
           error: 'Email address is already in use by another customer.'
         });
       }
+      if (error.code === '23505' && error.constraint === 'customers_phone_unique') {
+        return reply.status(400).send({
+          error: 'Phone number is already in use by another customer.'
+        });
+      }
 
       return reply.status(500).send({ error: 'Failed to update customer information.' });
     }

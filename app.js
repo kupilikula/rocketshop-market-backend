@@ -13,6 +13,7 @@ module.exports = async function (fastify, opts) {
   // Place here your custom code!
 
   const allowedOrigins = [
+    'http://localhost:8082', // Your Expo web dev server (default port)
     'http://localhost:8081', // Your Expo web dev server (default port)
     'http://localhost:8080', // Another common Expo web port
     'http://localhost:19006',// Another common Expo web port for Metro
@@ -85,7 +86,7 @@ module.exports = async function (fastify, opts) {
         request.user = null; // treat as guest
         return;
       } else {
-        return reply.status(401).send({ error: 'Unauthorized: Missing token' });
+        return reply.status(401).send({ error: 'Unauthorized: Missing token',  tryTokenRefresh: true });
       }
     }
 
@@ -100,7 +101,7 @@ module.exports = async function (fastify, opts) {
         console.log('No valid token, treating as guest for public route:', routePath);
         request.user = null; // treat as guest if it's a public route
       } else {
-        return reply.status(401).send({ error: 'Unauthorized: Invalid token' });
+        return reply.status(401).send({ error: 'Unauthorized: Invalid token',  tryTokenRefresh: true });
       }
     }
   });

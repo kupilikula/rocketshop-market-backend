@@ -3,7 +3,7 @@
 const knex = require("@database/knexInstance");
 const {OTP_PUBLIC_CONTEXTS, OTP_PRIVATE_CONTEXTS} = require("../../utils/OtpContexts");
 const smsService = require("../../services/SMSService");
-// const emailService = require("../../services/EmailService"); // Assuming you create this
+const emailService = require("../../services/EmailService"); // Assuming you create this
 const {getOtpText} = require("../../utils/getOtpText");
 const {isValidEmail, isValidE164Phone} = require("../../utils/validateIdentifier");
 
@@ -74,9 +74,8 @@ module.exports = async function (fastify, opts) {
 
         // Generate OTP message and send SMS
         try {
-            const message = getOtpText(otp);
              if (type === 'email') {
-                 // await emailService.sendOtpEmail(identifier, message); // Pass context if template varies
+                 await emailService.sendOtpEmail(identifier, otp); // Pass context if template varies
                  console.log('email sent');
              } else {
                  // await smsService.sendSMS(request.body.identifier.slice(1), message);

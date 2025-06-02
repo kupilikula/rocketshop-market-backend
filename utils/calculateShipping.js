@@ -24,7 +24,18 @@ const evaluateLocationCondition = (condition, address) => {
     }
 
     if (locationType === 'country') {
-        return address.country?.toLowerCase() === country?.toLowerCase();
+        if (address.country?.toLowerCase() === country?.toLowerCase()) {
+            return true;
+        }
+
+        if (country?.toLowerCase()==='international') {
+            if (address.country !== 'india') {
+                return true;
+            }
+        }
+        return false;
+
+
     }
 
     return false;

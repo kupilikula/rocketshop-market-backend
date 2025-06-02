@@ -92,8 +92,10 @@ module.exports = async function (fastify, opts) {
                         const { storeId, storeName, storeLogoImage, items } = storeGroup;
 
                         // Pass trx to calculateBilling if it needs to query within the transaction
-                        const recomputedBilling = await calculateBilling(storeId, items, null, deliveryAddress /*, trx */);
-
+                        const recomputedBilling = await calculateBilling(storeId, items, null, deliveryAddress );
+                        if (recomputedBilling.shipping===null) {
+                            throw new Error("International Shipping Not Available For One or More Items.")
+                        }
                         // Reserve stock within transaction
                         for (const item of items) {
                             const product = await trx('products')

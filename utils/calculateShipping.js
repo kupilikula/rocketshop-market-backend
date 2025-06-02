@@ -98,6 +98,15 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
         const rule = ruleMap[assignment.shippingRuleId];
         if (!rule || !Array.isArray(rule.conditions)) continue;
 
+        const deliveryCountry = deliveryAddress?.country?.toLowerCase();
+        const domesticCountry = 'india'; // Define your primary domestic country
+
+        if (deliveryCountry && deliveryCountry !== domesticCountry && !rule.is_international_shipping_enabled) {
+            // International address, but this rule does not have international shipping enabled
+            return null;
+                         // The frontend/cart will use this to block checkout or show "Cannot ship to this address."
+        }
+
         const groupKey = rule.groupingEnabled ? assignment.shippingRuleId : null;
 
         if (groupKey) {

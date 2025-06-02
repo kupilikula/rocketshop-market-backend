@@ -19,7 +19,9 @@ async function calculateBilling(storeId, items, offerCodes, deliveryAddress = nu
 
     // Calculate shipping (assume it returns a rounded value)
     const shipping = await calculateShipping(storeId, items, deliveryAddress);
-
+    if (shipping===null) {
+        console.log('International Shipping Not Available For Some Items.')
+    }
     // Calculate discounts and get the final state of items after all discounts applied
     const { totalDiscount, appliedOffers, finalItems } = await calculateDiscount(storeId, items, offerCodes);
 
@@ -37,7 +39,7 @@ async function calculateBilling(storeId, items, offerCodes, deliveryAddress = nu
 
     // --- Calculate GST on Shipping ---
     let shippingGst = 0;
-    if (shipping > 0) {
+    if (shipping && shipping > 0) {
         // *** ASSUMPTION: Using the highest GST rate from the original items ***
         // *** CONSULT A TAX ADVISOR FOR THE CORRECT RULE for composite supply ***
         let shippingGstRate = 0;

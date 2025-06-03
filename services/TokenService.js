@@ -14,7 +14,7 @@ const TokenService = {
 // Generate JWT
 
     generateAccessToken(payload) {
-        return jwt.sign(payload, JWT_SECRET, { expiresIn: '1m' }); // Short-lived access token
+        return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); // Short-lived access token
     },
 
     generateRefreshToken(payload) {
@@ -92,7 +92,7 @@ const TokenService = {
                 httpOnly: true,
                 secure: true,
                 path: '/auth',
-                sameSite: 'Strict',
+                sameSite: 'None',
             })
             .send({ accessToken, customer, cartData });
     }

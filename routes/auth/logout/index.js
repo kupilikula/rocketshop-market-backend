@@ -29,7 +29,7 @@ module.exports = async function (fastify, opts) {
             reply.clearCookie('refreshToken', {
                 httpOnly: true,
                 secure: true, // Ensure this is true in production
-                sameSite: 'Strict',
+                sameSite: 'None',
                 path: '/auth',
             });
 

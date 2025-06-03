@@ -47,7 +47,7 @@ module.exports = async function (fastify, opts) {
                 httpOnly: true, // Prevent client-side access
                 secure: true, // Use HTTPS in production
                 path: '/auth', // Restrict usage
-                sameSite: 'Strict', // Prevent CSRF attacks
+                sameSite: 'None', // Prevent CSRF attacks
             }).send({ accessToken: newAccessToken });
         } catch (error) {
             return reply.status(401).send({ error: 'Unauthorized: Invalid or expired refresh token' });

@@ -14,7 +14,7 @@ const TokenService = {
 // Generate JWT
 
     generateAccessToken(payload) {
-        return jwt.sign(payload, JWT_SECRET, { expiresIn: '6h' }); // Short-lived access token
+        return jwt.sign(payload, JWT_SECRET, { expiresIn: '1m' }); // Short-lived access token
     },
 
     generateRefreshToken(payload) {

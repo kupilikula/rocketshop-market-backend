@@ -12,7 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = async function(fastify, opts) {
     // This route assumes that authentication has been handled globally or by a parent plugin,
     // as it relies on `request.user.customerId` being available.
-    fastify.post('/create-order', async (request, reply) => {
+    fastify.post('/', async (request, reply) => {
         const logger = fastify.log;
         const customerId = request.user.customerId;
         const { storeId, cartItems, deliveryAddress, recipient } = request.body; // Renamed to deliveryAddress

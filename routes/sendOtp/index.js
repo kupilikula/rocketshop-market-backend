@@ -14,7 +14,7 @@ module.exports = async function (fastify, opts) {
             config: {
                 rateLimit: {
                     max: 5,                    // Max 5 OTP requests
-                    timeWindow: '10m',  // Per 10 minutes
+                    timeWindow: '1m',  // Per 10 minutes
                 }
             }
         },

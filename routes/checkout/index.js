@@ -12,16 +12,16 @@ module.exports = async function(fastify, opts) {
     fastify.post('/', async (request, reply) => {
         const logger = fastify.log;
         const customerId = request.user.customerId;
-        const { storeId, cartItems, shippingAddress } = request.body;
+        const { storeId, cartItems, deliveryAddress } = request.body;
 
         // 1. --- Input Validation (Unchanged) ---
-        if (!storeId || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0 || !shippingAddress) {
-            return reply.status(400).send({ error: "A storeId, cart items, and shipping address are required." });
+        if (!storeId || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0 || !deliveryAddress) {
+            return reply.status(400).send({ error: "A storeId, cart items, and delivery address are required." });
         }
 
         // 2. --- Duplicate Checkout Detection (Unchanged) ---
         try {
-            const checkoutHash = computePerStoreCartHash({ customerId, storeId, cartItems, shippingAddress });
+            const checkoutHash = computePerStoreCartHash({ customerId, storeId, cartItems, deliveryAddress });
             const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
             const recentAttempt = await knex('customer_cart_checkouts')
@@ -72,7 +72,7 @@ module.exports = async function(fastify, opts) {
             const [order] = await trx('orders').insert({
                 customerId,
                 totalAmount: 0,
-                shippingAddress: JSON.stringify(shippingAddress),
+                deliveryAddress: JSON.stringify(deliveryAddress),
                 status: 'pending_payment'
             }).returning('*');
 
@@ -96,7 +96,7 @@ module.exports = async function(fastify, opts) {
             if (totalAmount <= 0) throw new Error("Order total must be greater than zero.");
             logger.info({ orderId: order.orderId, totalAmount }, "Platform order created and stock reserved.");
 
-            const checkoutHash = computePerStoreCartHash({ customerId, storeId, cartItems, shippingAddress });
+            const checkoutHash = computePerStoreCartHash({ customerId, storeId, cartItems, deliveryAddress });
             await trx('customer_cart_checkouts').insert({
                 customerId,
                 checkoutHash: checkoutHash, // Renamed column

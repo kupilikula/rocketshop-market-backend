@@ -107,6 +107,7 @@ module.exports = async function(fastify, opts) {
 
             // 5. --- Create Razorpay Order ---
             const razorpayInstance = new Razorpay({ oauthToken: decryptedAccessToken });
+            console.log('decrypted access token:', decryptedAccessToken);
             const totalAmountInPaise = Math.round(totalAmount * 100);
             const transferData = [{ account: storeCredentials.razorpayLinkedAccountId, amount: totalAmountInPaise, currency: "INR" }];
             const razorpayOrderPayload = { amount: totalAmountInPaise, currency: "INR", receipt: orderId, transfers: transferData };

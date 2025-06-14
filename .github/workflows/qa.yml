@@ -3,7 +3,7 @@ name: Deploy Merchant Backend to QA
 on:
   push:
     branches:
-      - develop # Trigger on pushes to develop branch
+      - qa # Trigger on pushes to qa branch
 
 jobs:
   deploy:
@@ -13,10 +13,10 @@ jobs:
     # environment: qa
 
     steps:
-      - name: Checkout 'develop' branch
+      - name: Checkout 'qa' branch
         uses: actions/checkout@v4
         with:
-          ref: develop # Ensure we are checking out the develop branch
+          ref: qa # Ensure we are checking out the qa branch
 
       - name: Setup SSH Key for QA
         uses: webfactory/ssh-agent@v0.9.0
@@ -44,7 +44,7 @@ jobs:
             # --- Server Variables ---
             APP_DIR="/home/${{ secrets.QA_DEPLOYER_USER }}/market-backend"
             REPO_URL="git@github.com:RocketShopIndia/market-backend.git"
-            BRANCH="develop"
+            BRANCH="qa"
             PM2_APP_NAME="marketApi"
             START_SCRIPT_COMMAND="npm run start" # ADJUST if needed
 
@@ -61,10 +61,13 @@ jobs:
               echo "   Cloning repository..."
               git clone --branch $BRANCH $REPO_URL .
             else
-              echo "   Fetching latest changes..."
+              echo "   Fetching all remote changes and pruning old references..."
+              git fetch --all --prune
+
+              echo "   Checking out branch $BRANCH..."
               git checkout $BRANCH
-              git fetch origin $BRANCH
-              echo "   Resetting local branch to match origin/$BRANCH..."
+
+              echo "   Resetting local branch to match remote..."
               git reset --hard origin/$BRANCH
             fi
 

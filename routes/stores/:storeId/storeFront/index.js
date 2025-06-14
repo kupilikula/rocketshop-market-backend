@@ -16,6 +16,8 @@ module.exports = async function (fastify, opts) {
         return reply.status(404).send({ error: 'Store not found or inactive.' });
       }
 
+      const storePolicy = await knex('storePolicies').where({ storeId }).first() || {};
+
       // Get total number of active collections (regardless of storeFrontDisplay)
       const [{ count: totalNumberOfCollections }] = await knex('collections')
           .where({ storeId, isActive: true })
@@ -52,7 +54,7 @@ module.exports = async function (fastify, opts) {
         collection.totalNumberOfProducts = parseInt(totalProducts);
       }
 
-      return reply.send({ ...store, displayCollections: collections, totalNumberOfCollections: parseInt(totalNumberOfCollections) });
+      return reply.send({ ...store, storePolicy, displayCollections: collections, totalNumberOfCollections: parseInt(totalNumberOfCollections) });
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Failed to fetch store front data.' });

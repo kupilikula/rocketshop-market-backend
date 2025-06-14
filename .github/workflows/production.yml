@@ -81,8 +81,6 @@ jobs:
             DB_PORT='${{ secrets.PROD_DB_PORT }}'
             DB_NAME='${{ secrets.PROD_DB_NAME }}'
             DB_SSL='${{ secrets.PROD_DB_SSL }}'
-            SPACES_ACCESS_KEY_ID='${{ secrets.PROD_SPACES_ACCESS_KEY_ID }}'
-            SPACES_SECRET_KEY='${{ secrets.PROD_SPACES_SECRET_KEY }}'
             JWT_SECRET='${{ secrets.PROD_JWT_SECRET }}'
             JWT_REFRESH_SECRET='${{ secrets.PROD_JWT_REFRESH_SECRET }}'
             SMS_COUNTRY_AUTH_KEY='${{ secrets.PROD_SMS_COUNTRY_AUTH_KEY }}'
@@ -95,11 +93,6 @@ jobs:
             ZOHO_SENDER_NAME='${{ secrets.PROD_ZOHO_SENDER_NAME }}'
             RAZORPAY_KEY_ID='${{ secrets.PROD_RAZORPAY_KEY_ID }}'
             RAZORPAY_KEY_SECRET='${{ secrets.PROD_RAZORPAY_KEY_SECRET }}'
-            RAZORPAY_CLIENT_ID='${{ secrets.PROD_RAZORPAY_CLIENT_ID }}'
-            RAZORPAY_CLIENT_SECRET='${{ secrets.PROD_RAZORPAY_CLIENT_SECRET }}'
-            RAZORPAY_REDIRECT_URI='${{ secrets.PROD_RAZORPAY_REDIRECT_URI }}'
-            RAZORPAY_SCOPES='${{ secrets.PROD_RAZORPAY_SCOPES }}'
-            RAZORPAY_WEBHOOK_SECRET='${{ secrets.PROD_RAZORPAY_WEBHOOK_SECRET }}'
             ENCRYPTION_KEY='${{ secrets.PROD_ENCRYPTION_KEY }}'
             # Add any other necessary PROD environment variables here...
             EOF

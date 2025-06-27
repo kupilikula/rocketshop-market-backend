@@ -2,13 +2,14 @@
 'use strict'
 
 const crypto = require('crypto'); // Node.js crypto module for HMAC-SHA256
+const knex = require('@database/knexInstance');
 
 module.exports = async function (fastify, opts) {
     fastify.post('/', async function (request, reply) {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = request.body;
+        const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = request.body;
 
         // 1. Validate Input
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
             fastify.log.warn({ body: request.body }, "Missing fields for signature verification");
             return reply.status(400).send({ error: 'Missing required payment details for verification.' });
         }
@@ -23,7 +24,7 @@ module.exports = async function (fastify, opts) {
         try {
             // 3. Construct the String to Sign
             // As per Razorpay docs: order_id + "|" + payment_id
-            const bodyString = `${razorpay_order_id}|${razorpay_payment_id}`;
+            const bodyString = `${razorpayOrderId}|${razorpayPaymentId}`;
 
             // 4. Compute the Expected Signature
             const expectedSignature = crypto
@@ -35,16 +36,18 @@ module.exports = async function (fastify, opts) {
             // IMPORTANT: Direct string comparison is common in examples, but timingSafeEqual
             // is theoretically safer against timing attacks, though less critical here than
             // for webhook signature verification. For simplicity, we use direct comparison here.
-            if (expectedSignature === razorpay_signature) {
+            if (expectedSignature === razorpaySignature) {
                 // Signature matches - Data is likely legitimate
-                fastify.log.info({ orderId: razorpay_order_id, paymentId: razorpay_payment_id }, "Razorpay signature verified successfully.");
+                fastify.log.info({ razorpayOrderId, razorpayPaymentId }, "Razorpay signature verified successfully.");
+                await knex('orders').update({razorpaySignature, razorpayPaymentId}).where({razorpayOrderId})
+
                 // NOTE: This verification ONLY confirms the frontend data integrity.
                 // It does NOT confirm payment capture or authorize fulfillment.
                 // Rely on webhooks for actual payment confirmation.
                 return reply.send({ status: 'ok', verified: true });
             } else {
                 // Signature does not match - Potential tampering or error
-                fastify.log.warn({ orderId: razorpay_order_id, paymentId: razorpay_payment_id, received: razorpay_signature, expected: expectedSignature }, "Razorpay signature verification failed: Mismatch.");
+                fastify.log.warn({ razorpayOrderId, razorpayPaymentId, receivedSignature: razorpaySignature, expectedSignature: expectedSignature }, "Razorpay signature verification failed: Mismatch.");
                 return reply.status(400).send({ error: 'Invalid signature.', verified: false });
             }
 

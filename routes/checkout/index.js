@@ -109,9 +109,13 @@ module.exports = async function(fastify, opts) {
             const razorpayInstance = new Razorpay({ oauthToken: decryptedAccessToken });
             console.log('decrypted access token:', decryptedAccessToken);
             const totalAmountInPaise = Math.round(totalAmount * 100);
-            const transferData = [{ account: storeCredentials.razorpayLinkedAccountId, amount: totalAmountInPaise, currency: "INR" }];
+            const transferData = [
+                { account: storeCredentials.razorpayLinkedAccountId, amount: totalAmountInPaise, currency: "INR" },
+                { account: myaccount, amount: commission, currency: INR}
+            ];
             const razorpayOrderPayload = { amount: totalAmountInPaise, currency: "INR", receipt: orderId, transfers: transferData };
             console.log('razorpayOrderPayload', razorpayOrderPayload);
+
             const razorpayOrder = await razorpayInstance.orders.create(razorpayOrderPayload);
 
             // 6. --- Finalize Platform Order and Commit ---

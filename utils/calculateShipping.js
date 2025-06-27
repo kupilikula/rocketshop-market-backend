@@ -64,7 +64,7 @@ const evaluateFormula = (baseCost, modifiers, itemCount, orderTotalDecimal) => {
 
     // Promote numbers to Decimals at the point of calculation
     const baseCostDecimal = new Decimal(baseCost);
-
+    console.log("baseCostDecimal", baseCostDecimal);
     if (extraEnabled) {
         const extraItemsCount = Math.max(0, itemCount - freeItems);
         // Calculation involves a number and a Decimal, so result is a Decimal
@@ -87,7 +87,7 @@ const evaluateFormula = (baseCost, modifiers, itemCount, orderTotalDecimal) => {
         // Promote the capAmount number to a Decimal for the comparison
         cost = Decimal.min(cost, new Decimal(capAmount));
     }
-
+    console.log("cost", cost);
     return cost;
 };
 
@@ -183,7 +183,7 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
 
         totalShippingCost = totalShippingCost.plus(cost);
     }
-
+    console.log("totalShippingCost", totalShippingCost);
     return totalShippingCost.toDP(2).toNumber();
 };
 

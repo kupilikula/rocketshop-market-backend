@@ -24,7 +24,7 @@ async function calculateBilling(storeId, items, offerCodes, deliveryAddress = nu
     }
     // Calculate discounts and get the final state of items after all discounts applied
     const { totalDiscount, appliedOffers, finalItems } = await calculateDiscount(storeId, items, offerCodes);
-
+    console.log('Total Discount Applied:', totalDiscount, appliedOffers, finalItems);
     // --- Calculate GST based on FINAL item prices and quantities ---
     // itemGst here represents *only* the tax explicitly added for tax-exclusive items
     let itemGst = roundToTwoDecimals(finalItems.reduce((sum, itemEntry) => {

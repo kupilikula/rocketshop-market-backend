@@ -133,13 +133,14 @@ async function calculateDiscount(storeId, items, offerCodes) {
         const applicableItemsOriginal = (await Promise.all(
             items.map(async item => ({ item, isApplicable: await isOfferApplicable(item.product.productId, offer, offerCodes) }))
         )).filter(entry => entry.isApplicable).map(entry => entry.item);
-
+        console.log('applicableItemsOriginal:',applicableItemsOriginal);
         if (applicableItemsOriginal.length === 0) continue;
 
         // Find the corresponding mutable entries in our itemsState.
         const applicableItemEntries = itemsState.filter(entry =>
             applicableItemsOriginal.some(orig => orig.product.productId === entry.product.productId)
         );
+        console.log('applicableItemEntries:',applicableItemEntries);
 
         // Check offer conditions (e.g., minimum purchase) based on original item data.
         const subtotalForConditions = applicableItemsOriginal.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -149,7 +150,7 @@ async function calculateDiscount(storeId, items, offerCodes) {
         if (minimumItems && totalItemsForConditions < minimumItems) continue;
 
         let currentOfferDiscountAmount = 0;
-
+        console.log('conditions passed');
         // --- Apply Discounts Sequentially and Modify itemsState directly ---
         if (offer.offerType === "Buy N Get K Free") {
             // Sort by current price (cheapest get discounted first) before applying BOGO.
@@ -172,6 +173,7 @@ async function calculateDiscount(storeId, items, offerCodes) {
                 }
             });
             currentOfferDiscountAmount = discountSumForThisOffer;
+            console.log('discountSumForThisOFfer:',discountSumForThisOffer);
 
         } else if (offer.offerType === "Fixed Amount Off") {
             const fixedAmount = offer.discountDetails?.fixedAmount;

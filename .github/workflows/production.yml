@@ -91,6 +91,8 @@ jobs:
             ZOHO_EMAIL_API_KEY='${{ secrets.PROD_ZOHO_EMAIL_API_KEY }}'
             ZOHO_SENDER_EMAIL='${{ secrets.PROD_ZOHO_SENDER_EMAIL }}'
             ZOHO_SENDER_NAME='${{ secrets.PROD_ZOHO_SENDER_NAME }}'
+            RAZORPAY_CLIENT_ID='${{ secrets.PROD_RAZORPAY_CLIENT_ID }}'
+            RAZORPAY_CLIENT_SECRET='${{ secrets.PROD_RAZORPAY_CLIENT_SECRET }}'
             RAZORPAY_KEY_ID='${{ secrets.PROD_RAZORPAY_KEY_ID }}'
             RAZORPAY_KEY_SECRET='${{ secrets.PROD_RAZORPAY_KEY_SECRET }}'
             ENCRYPTION_KEY='${{ secrets.PROD_ENCRYPTION_KEY }}'

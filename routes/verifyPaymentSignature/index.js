@@ -15,7 +15,7 @@ module.exports = async function (fastify, opts) {
         }
 
         // 2. Get Secret Key (Ensure this is the correct secret for the environment Test/Live)
-        const secret = process.env.RAZORPAY_KEY_SECRET; // Use your exact env variable name
+        const secret = process.env.RAZORPAY_CLIENT_SECRET; // Use your exact env variable name
         if (!secret) {
             fastify.log.error("RAZORPAY_KEY_SECRET environment variable is not set.");
             return reply.status(500).send({ error: 'Configuration error' }); // Don't expose details

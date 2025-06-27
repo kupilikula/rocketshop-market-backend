@@ -1,43 +1,66 @@
-// src/utils/calculateDiscount.js (Example path)
-const knex = require('@database/knexInstance'); // Adjust path
-const { roundToTwoDecimals } = require('./roundToTwoDecimals'); // Import helper
+// src/utils/calculateDiscount.js
+const knex = require("@database/knexInstance"); // Adjust path as needed
 
+/**
+ * A simple helper to round a number to two decimal places.
+ * @param {number} num - The number to round.
+ * @returns {number} - The rounded number.
+ */
+function roundToTwoDecimals(num) {
+    if (typeof num !== 'number' || isNaN(num)) {
+        return 0;
+    }
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+}
+
+
+/**
+ * Checks if an offer is applicable to a given product.
+ * Fetches product's collections and tags if not available in the object.
+ * @param {string} productId - The product ID.
+ * @param {Object} offer - The offer object.
+ * @param {Array<string>} offerCodes - List of user-provided offer codes.
+ * @returns {Promise<boolean>} - Whether the offer applies to this product.
+ */
 async function isOfferApplicable(productId, offer, offerCodes) {
-
+    // Check if the offer requires a code and if the user has provided it.
     if (offer.requireCode && (!offerCodes || !offerCodes.includes(offer.offerCode))) {
         return false;
     }
 
-    // Fetch product details (including collections and tags) if not provided
+    // If the offer applies to the entire store, no further checks are needed.
+    if (offer.applicableTo.storeWide) {
+        return true;
+    }
+
+    // Fetch product details to check against applicability rules.
     const product = await knex("products")
         .where("productId", productId)
         .select("productId", "productTags")
         .first();
 
-    if (!product) return false; // Product does not exist
+    if (!product) return false; // Product does not exist.
 
-    if (offer.applicableTo.storeWide) {
-        return true;
-    }
-    // Fetch collections for the product
+    // Fetch collections for the product.
     const collections = await knex("productCollections")
         .where("productId", productId)
         .pluck("collectionId");
 
     const { productTags } = product;
-    const applicableTo = offer.applicableTo;
+    const { applicableTo } = offer;
 
-
+    // Return true if the product matches any of the applicability criteria.
     return (
         (applicableTo.productIds && applicableTo.productIds.includes(productId)) ||
         (applicableTo.collectionIds && applicableTo.collectionIds.some(id => collections.includes(id))) ||
-        (applicableTo.productTags && applicableTo.productTags.some(tag => productTags.includes(tag)))
+        (applicableTo.productTags && productTags && applicableTo.productTags.some(tag => productTags.includes(tag)))
     );
 }
+
 /**
  * Applies Buy N Get K Free discount logic internally.
- * Modifies applicableItemEntries directly (reduces finalQuantity) and returns discount value.
- * @param {Array} applicableItemEntries - Mutable array of item entries ({..., finalPrice, finalQuantity, discountApplied}). MUST be sorted by price ascending.
+ * This function modifies the item entries directly to reflect the discount.
+ * @param {Array} applicableItemEntries - Mutable array of item entries. MUST be sorted by price ascending.
  * @param {Object} discountDetails - BOGO details { buyN, getK }.
  * @returns {number} - The calculated discount amount for this BOGO offer.
  */
@@ -52,29 +75,29 @@ function applyBuyNGetKFreeDiscountInternal(applicableItemEntries, discountDetail
     if (totalFreeItems <= 0) return 0;
 
     let offerBogoDiscount = 0;
-    let itemsMadeFreeCount = totalFreeItems; // Use this counter within the loop
+    let itemsToMakeFree = totalFreeItems;
 
     // Assumes applicableItemEntries is already sorted by price ascending
     for (const entry of applicableItemEntries) {
-        if (itemsMadeFreeCount <= 0) break; // Check the correct counter
+        if (itemsToMakeFree <= 0) break;
 
-        const freeUnitsFromThisItem = Math.min(entry.finalQuantity, itemsMadeFreeCount); // Use correct counter
+        const freeUnitsFromThisItem = Math.min(entry.finalQuantity, itemsToMakeFree);
         const discountValueForItem = freeUnitsFromThisItem * entry.finalPrice;
 
         offerBogoDiscount += discountValueForItem;
-        entry.finalQuantity -= freeUnitsFromThisItem; // Reduce effective quantity
-        entry.discountApplied = roundToTwoDecimals(entry.discountApplied + discountValueForItem); // Track discount
-        itemsMadeFreeCount -= freeUnitsFromThisItem; // Decrement correct counter
+        entry.finalQuantity -= freeUnitsFromThisItem; // Reduce effective quantity for subsequent offers
+        entry.discountApplied = roundToTwoDecimals(entry.discountApplied + discountValueForItem); // Track discount on the item
+        itemsToMakeFree -= freeUnitsFromThisItem;
     }
     return roundToTwoDecimals(offerBogoDiscount);
 }
 
 
 /**
- * Calculates discounts, applying them sequentially and returning final item states.
- * @param {string} storeId
- * @param {Array} items - Original cart items [{ product: {...}, quantity }]
- * @param {Array<string>} offerCodes
+ * Calculates discounts by applying them sequentially and returns the final state of items.
+ * @param {string} storeId - The ID of the store.
+ * @param {Array} items - Original cart items [{ product: {...}, quantity }].
+ * @param {Array<string>} offerCodes - Optional list of user-entered offer codes.
  * @returns {Promise<{totalDiscount: number, appliedOffers: Array, finalItems: Array}>}
  */
 async function calculateDiscount(storeId, items, offerCodes) {
@@ -93,28 +116,29 @@ async function calculateDiscount(storeId, items, offerCodes) {
 
     let runningTotalDiscount = 0;
     const appliedOffersDetails = [];
-    // Mutable state for items, tracking final price and quantity after discounts
+
+    // Create a mutable state for items to track price and quantity changes as discounts are applied.
     const itemsState = items.map(i => ({
-        ...i, // Spread original item ({ product: {...}, quantity })
-        finalPrice: roundToTwoDecimals(i.product.price), // Start with rounded original price
-        finalQuantity: i.quantity, // Start with original quantity
-        discountApplied: 0 // Track discount applied to this specific item entry
+        ...i,
+        finalPrice: roundToTwoDecimals(i.product.price),
+        finalQuantity: i.quantity,
+        discountApplied: 0
     }));
 
     for (const offer of offers) {
-        // Find original items applicable to this offer
+        // Find original items applicable to this offer to check conditions.
         const applicableItemsOriginal = (await Promise.all(
             items.map(async item => ({ item, isApplicable: await isOfferApplicable(item.product.productId, offer, offerCodes) }))
         )).filter(entry => entry.isApplicable).map(entry => entry.item);
 
-        // Find the corresponding mutable entries in itemsState
+        if (applicableItemsOriginal.length === 0) continue;
+
+        // Find the corresponding mutable entries in our itemsState.
         const applicableItemEntries = itemsState.filter(entry =>
             applicableItemsOriginal.some(orig => orig.product.productId === entry.product.productId)
         );
 
-        if (applicableItemEntries.length === 0) continue;
-
-        // Check conditions based on original data if needed
+        // Check offer conditions (e.g., minimum purchase) based on original item data.
         const subtotalForConditions = applicableItemsOriginal.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
         const totalItemsForConditions = applicableItemsOriginal.reduce((sum, item) => sum + item.quantity, 0);
         const { minimumPurchaseAmount, minimumItems } = offer.conditions || {};
@@ -125,69 +149,75 @@ async function calculateDiscount(storeId, items, offerCodes) {
 
         // --- Apply Discounts Sequentially and Modify itemsState directly ---
         if (offer.offerType === "Buy N Get K Free") {
-            // Sort by current price before applying BOGO internally
+            // Sort by current price (cheapest get discounted first) before applying BOGO.
             applicableItemEntries.sort((a, b) => a.finalPrice - b.finalPrice);
             currentOfferDiscountAmount = applyBuyNGetKFreeDiscountInternal(applicableItemEntries, offer.discountDetails);
+
         } else if (offer.offerType === "Percentage Off") {
             const percentage = offer.discountDetails?.percentage;
             if (!percentage || percentage <= 0) continue;
             let discountSumForThisOffer = 0;
+
             applicableItemEntries.forEach(entry => {
-                if (entry.finalQuantity > 0) { // Only apply to items with remaining quantity
+                if (entry.finalQuantity > 0) { // Only apply to items with a remaining quantity.
                     const discountPerUnit = roundToTwoDecimals(entry.finalPrice * (percentage / 100));
                     const totalDiscountForItemEntry = roundToTwoDecimals(discountPerUnit * entry.finalQuantity);
+
                     discountSumForThisOffer += totalDiscountForItemEntry;
-                    entry.finalPrice = roundToTwoDecimals(entry.finalPrice - discountPerUnit); // Update price for NEXT offer
+                    entry.finalPrice = roundToTwoDecimals(entry.finalPrice - discountPerUnit); // Update price for the NEXT offer.
                     entry.discountApplied = roundToTwoDecimals(entry.discountApplied + totalDiscountForItemEntry);
                 }
             });
-            currentOfferDiscountAmount = discountSumForThisOffer; // Already rounded
+            currentOfferDiscountAmount = discountSumForThisOffer;
+
         } else if (offer.offerType === "Fixed Amount Off") {
             const fixedAmount = offer.discountDetails?.fixedAmount;
             if (!fixedAmount || fixedAmount <= 0) continue;
-            // Assumption: Fixed amount applies PER UNIT, up to the item's current final price
             let discountSumForThisOffer = 0;
+
             applicableItemEntries.forEach(entry => {
                 if (entry.finalQuantity > 0) {
-                    const discountPerUnit = Math.min(entry.finalPrice, fixedAmount); // Discount cannot exceed current price
+                    const discountPerUnit = Math.min(entry.finalPrice, fixedAmount); // Discount cannot make the item price negative.
                     const totalDiscountForItemEntry = roundToTwoDecimals(discountPerUnit * entry.finalQuantity);
+
                     discountSumForThisOffer += totalDiscountForItemEntry;
-                    entry.finalPrice = roundToTwoDecimals(entry.finalPrice - discountPerUnit); // Update price for NEXT offer
+                    entry.finalPrice = roundToTwoDecimals(entry.finalPrice - discountPerUnit); // Update price for the NEXT offer.
                     entry.discountApplied = roundToTwoDecimals(entry.discountApplied + totalDiscountForItemEntry);
                 }
             });
-            currentOfferDiscountAmount = discountSumForThisOffer; // Already rounded
+            currentOfferDiscountAmount = discountSumForThisOffer;
         }
-        // --- End Discount Application ---
-
-        // No need to round currentOfferDiscountAmount again if sub-calcs are rounded
 
         if (currentOfferDiscountAmount > 0) {
-            runningTotalDiscount += currentOfferDiscountAmount; // Accumulate discounts
+            runningTotalDiscount += currentOfferDiscountAmount;
+
+            // This is the reconstructed, detailed object, combining the best of both versions.
             appliedOffersDetails.push({
                 offerId: offer.offerId,
                 offerName: offer.offerName,
-                discountAmount: currentOfferDiscountAmount, // Store amount for this specific offer
-                // Add other details...
+                offerType: offer.offerType,
+                offerDisplayText: offer.offerDisplayText,
+                discountDetails: offer.discountDetails,
+                conditions: offer.conditions,
+                discountAmount: currentOfferDiscountAmount,
+                applicableItems: applicableItemsOriginal // Storing the original items this offer applied to.
             });
         }
     } // End offer loop
 
-    // Final total discount is the sum of rounded intermediate discounts
     const finalTotalDiscount = roundToTwoDecimals(runningTotalDiscount);
 
-    // Optionally sanity check: finalTotalDiscount should roughly equal sum of itemEntry.discountApplied
+    // Sanity check to ensure the sum of discounts on individual items matches the total calculated discount.
     const checkDiscount = roundToTwoDecimals(itemsState.reduce((sum, entry) => sum + entry.discountApplied, 0));
-    if(Math.abs(finalTotalDiscount - checkDiscount) > 0.001) { // Allow for tiny floating point diffs
-        console.warn("Discrepancy between runningTotalDiscount and summed item discounts", { finalTotalDiscount, checkDiscount });
+    if (Math.abs(finalTotalDiscount - checkDiscount) > 0.01) { // Allow for tiny floating point differences
+        console.warn("Discrepancy between running total discount and summed item discounts.", { finalTotalDiscount, checkDiscount });
     }
 
     return {
         totalDiscount: finalTotalDiscount,
         appliedOffers: appliedOffersDetails,
-        finalItems: itemsState // Items now have finalPrice/finalQuantity after all sequential discounts
+        finalItems: itemsState // The final state of items after all discounts.
     };
 }
 
-// Export if needed
 module.exports = { calculateDiscount, isOfferApplicable };

@@ -1,7 +1,10 @@
 // src/utils/calculateBilling.js (Example path)
 const { calculateDiscount } = require('./calculateDiscount'); // Import refactored discount function
 const { calculateShipping } = require('./calculateShipping'); // Import shipping function (assumed correct)
-const { roundToTwoDecimals } = require('./roundToTwoDecimals'); // Import helper
+const Decimal = require("decimal.js");
+
+// Set precision for decimal.js for financial calculations
+Decimal.set({ precision: 10, rounding: Decimal.ROUND_HALF_UP });
 
 /**
  * Calculates final billing details using item-level prices post-discount.
@@ -12,68 +15,72 @@ const { roundToTwoDecimals } = require('./roundToTwoDecimals'); // Import helper
  * @returns {Promise<Object>} - Billing details
  */
 async function calculateBilling(storeId, items, offerCodes, deliveryAddress = null) {
-    // Calculate original subtotal (sum of original prices * original quantities) for reference
-    const subtotal = roundToTwoDecimals(items.reduce(
-        (sum, item) => sum + item.product.price * item.quantity, 0
-    ));
+    // 1. Calculate original subtotal using Decimal for precision
+    const subtotalDecimal = items.reduce(
+        (sum, item) => sum.plus(new Decimal(item.product.price).times(item.quantity)),
+        new Decimal(0)
+    );
 
-    // Calculate shipping (assume it returns a rounded value)
-    const shipping = await calculateShipping(storeId, items, deliveryAddress);
-    if (shipping===null) {
-        console.log('International Shipping Not Available For Some Items.')
+    // 2. Calculate shipping (result is a number, will be converted to Decimal for calculations)
+    const shippingCost = await calculateShipping(storeId, items, deliveryAddress) || 0;
+    if (shippingCost === null) {
+        console.log('International Shipping Not Available For Some Items.');
     }
-    // Calculate discounts and get the final state of items after all discounts applied
+    const shippingDecimal = new Decimal(shippingCost);
+
+    // 3. Calculate discounts. `totalDiscount` and `finalItems` values are numbers.
     const { totalDiscount, appliedOffers, finalItems } = await calculateDiscount(storeId, items, offerCodes);
-    console.log('Total Discount Applied:', totalDiscount, appliedOffers, finalItems);
-    // --- Calculate GST based on FINAL item prices and quantities ---
-    // itemGst here represents *only* the tax explicitly added for tax-exclusive items
-    let itemGst = roundToTwoDecimals(finalItems.reduce((sum, itemEntry) => {
-        // Use the final effective price and quantity for tax base
-        const itemFinalTaxableValue = itemEntry.finalPrice * itemEntry.finalQuantity;
-        // Only add GST if the product price did NOT already include it
-        const itemGstPortion = itemEntry.product.gstInclusive
-            ? 0 // GST already in finalPrice, don't add again
-            : itemFinalTaxableValue * (itemEntry.product.gstRate / 100); // Calculate explicit tax
-        return sum + itemGstPortion;
-    }, 0));
+    const totalDiscountDecimal = new Decimal(totalDiscount);
 
-    // --- Calculate GST on Shipping ---
-    let shippingGst = 0;
-    if (shipping && shipping > 0) {
-        // *** ASSUMPTION: Using the highest GST rate from the original items ***
-        // *** CONSULT A TAX ADVISOR FOR THE CORRECT RULE for composite supply ***
-        let shippingGstRate = 0;
-        if (items.length > 0) {
-            shippingGstRate = items.reduce((maxRate, item) => Math.max(maxRate, item.product.gstRate || 0), 0);
+    // 4. Calculate GST based on FINAL item prices and quantities using Decimal
+    const itemGstDecimal = finalItems.reduce((sum, itemEntry) => {
+        const finalPriceDecimal = new Decimal(itemEntry.finalPrice);
+        const gstRateDecimal = new Decimal(itemEntry.product.gstRate || 0);
+
+        const itemFinalTaxableValue = finalPriceDecimal.times(itemEntry.finalQuantity);
+
+        const itemGstPortion = itemEntry.product.gstInclusive
+            ? new Decimal(0) // GST already in finalPrice, don't add again
+            : itemFinalTaxableValue.times(gstRateDecimal.div(100)); // Calculate explicit tax
+
+        return sum.plus(itemGstPortion);
+    }, new Decimal(0));
+
+    // 5. Calculate GST on Shipping using Decimal
+    let shippingGstDecimal = new Decimal(0);
+    if (shippingCost > 0) {
+        // Correctly find the highest GST rate from original items using Decimal.max
+        const shippingGstRate = items.reduce(
+            (maxRate, item) => Decimal.max(maxRate, new Decimal(item.product.gstRate || 0)),
+            new Decimal(0)
+        );
+
+        if (shippingGstRate.greaterThan(0)) {
+            shippingGstDecimal = shippingDecimal.times(shippingGstRate.div(100));
         }
-        shippingGst = roundToTwoDecimals(shipping * (shippingGstRate / 100));
-        // console.log(`Applying ${shippingGstRate}% GST to shipping cost ${shipping}. GST: ${shippingGst}`);
     }
 
-    // --- Total Explicitly Added GST (for tax-exclusive items + shipping) ---
-    const totalGst = roundToTwoDecimals(itemGst + shippingGst);
+    // 6. Calculate Total Explicitly Added GST using Decimal
+    const totalGstDecimal = itemGstDecimal.plus(shippingGstDecimal);
 
-    // --- Calculate Final Total Payable ---
-    // This should be: Original Subtotal + Shipping + Total Explicit GST - Total Discount
-    // This formula correctly accounts for inclusive/exclusive pricing because:
-    // - 'subtotal' is based on listed prices (which might include tax implicitly)
-    // - 'totalGst' ONLY includes tax added explicitly for exclusive items + shipping
-    // - 'totalDiscount' is subtracted from the overall value.
-    const total = roundToTwoDecimals(subtotal + shipping + totalGst - totalDiscount);
+    // 7. Calculate Final Total Payable using Decimal
+    // Formula: Subtotal + Shipping + Total Explicit GST - Total Discount
+    const totalDecimal = subtotalDecimal.plus(shippingDecimal).plus(totalGstDecimal).minus(totalDiscountDecimal);
 
-    // --- Sanity Check (Optional): Sum final item values + shipping + explicit shipping GST ---
-    // const finalItemValueTotal = roundToTwoDecimals(finalItems.reduce((sum, itemEntry) => sum + itemEntry.finalPrice * itemEntry.finalQuantity, 0));
-    // const checkTotal = roundToTwoDecimals(finalItemValueTotal + shipping + shippingGst); // Note: itemGst for exclusive items is already reflected in finalItemValueTotal difference from original subtotal if discounts applied
-    // console.log("Total Check:", { total, checkTotal, subtotal, shipping, totalGst, totalDiscount });
+    // --- Sanity Check using Decimal (Optional) ---
+    // const finalItemValueTotal = finalItems.reduce((sum, item) => sum.plus(new Decimal(item.finalPrice).times(item.finalQuantity)), new Decimal(0));
+    // const checkTotal = finalItemValueTotal.plus(shippingDecimal).plus(shippingGstDecimal);
+    // console.log("Total Check (Decimal):", { total: totalDecimal.toString(), checkTotal: checkTotal.toString() });
     // --- End Sanity Check ---
 
+    // 8. Return final object with all values converted back to numbers
     return {
-        subtotal,       // Original subtotal, rounded
-        shipping,       // Rounded
-        discount: totalDiscount, // Total discount applied, rounded
+        subtotal: subtotalDecimal.toDP(2).toNumber(),
+        shipping: shippingCost, // Already a number
+        discount: totalDiscount, // Already a number
         appliedOffers,
-        gst: totalGst,  // Total EXPLICITLY ADDED GST, rounded
-        total,          // Final total payable, rounded
+        gst: totalGstDecimal.toDP(2).toNumber(),
+        total: totalDecimal.toDP(2).toNumber(),
     };
 }
 

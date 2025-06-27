@@ -132,7 +132,7 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
     for (const [ruleId, group] of Object.entries(bundledGroups)) {
         const rule = group[0].rule;
         const itemsInGroup = group.map(g => g.item);
-
+        console.log('line 141 itemsInGroup:', JSON.stringify(itemsInGroup, null, 2));
         const totalItemCount = itemsInGroup.reduce((sum, i) => sum + i.quantity, 0);
         const totalOrderTotal = itemsInGroup.reduce((sum, i) => sum + i.quantity * i.price, 0);
 
@@ -158,6 +158,7 @@ const calculateShipping = async (storeId, items, deliveryAddress) => {
 
         if (!matchedCondition) continue;
 
+        console.log('line 161 item:', JSON.stringify(item, null, 2));
         const itemCount = item.quantity;
         const orderTotal = item.price * item.quantity;
 

@@ -23,8 +23,10 @@ function roundToTwoDecimals(num) {
  * @returns {Promise<boolean>} - Whether the offer applies to this product.
  */
 async function isOfferApplicable(productId, offer, offerCodes) {
+    console.log('isOfferApplicable:',productId, offer, offerCodes);
     // Check if the offer requires a code and if the user has provided it.
     if (offer.requireCode && (!offerCodes || !offerCodes.includes(offer.offerCode))) {
+        console.log('line 29 false');
         return false;
     }
 
@@ -48,7 +50,8 @@ async function isOfferApplicable(productId, offer, offerCodes) {
 
     const { productTags } = product;
     const { applicableTo } = offer;
-
+    console.log('applicableTo.productIds:',applicableTo.productIds);
+    console.log('productId:', productId);
     // Return true if the product matches any of the applicability criteria.
     return (
         (applicableTo.productIds && applicableTo.productIds.includes(productId)) ||

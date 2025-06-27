@@ -74,7 +74,6 @@ async function calculateBilling(storeId, items, offerCodes, deliveryAddress = nu
         appliedOffers,
         gst: totalGst,  // Total EXPLICITLY ADDED GST, rounded
         total,          // Final total payable, rounded
-        _finalItems_debug: finalItems // Return final item state for debugging if needed
     };
 }
 

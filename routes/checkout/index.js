@@ -5,7 +5,7 @@
 const knex = require('@database/knexInstance');
 const Razorpay = require('razorpay');
 const { decryptText } = require('../../utils/encryption');
-const { computePerStoreCartHash } = require('../../utils/computePerStoreCartHash');
+const { computePerStoreCheckoutHash } = require('../../utils/computePerStoreCheckoutHash');
 const { getCanceledOrFailedOrderStatuses } = require('../../utils/orderStatusList');
 const { v4: uuidv4 } = require('uuid');
 
@@ -15,7 +15,7 @@ module.exports = async function(fastify, opts) {
     fastify.post('/', async (request, reply) => {
         const logger = fastify.log;
         const customerId = request.user.customerId;
-        const { storeId, cartItems, deliveryAddress, recipient } = request.body; // Renamed to deliveryAddress
+        const { storeId, cartItems, deliveryAddress, recipient, offerCodes } = request.body; // Renamed to deliveryAddress
 
         // 1. --- Input Validation ---
         if (!storeId || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0 || !deliveryAddress || !recipient) {
@@ -25,7 +25,7 @@ module.exports = async function(fastify, opts) {
         // 2. --- Duplicate Checkout Detection ---
         try {
             // Using deliveryAddress in hash
-            const checkoutHash = computePerStoreCartHash({ customerId, storeId, cartItems, deliveryAddress });
+            const checkoutHash = computePerStoreCheckoutHash({ customerId, storeId, cartItems, deliveryAddress });
             const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
             const recentAttempt = await knex('customer_cart_checkouts')
@@ -81,8 +81,8 @@ module.exports = async function(fastify, opts) {
             await trx('order_status_history').insert({
                 orderStatusId: uuidv4(), orderId, orderStatus: 'Order Created'
             });
-
-            let totalAmount = 0;
+            // TODO: This code is not correctly using the calculate billing util function or the offerCodes info
+            // let totalAmount = 0;
             for (const item of cartItems) {
                 const product = await trx('products').where({ productId: item.productId, storeId: storeId }).forUpdate().first();
                 if (!product) throw new Error(`Product ${item.productId} not found for store ${storeId}.`);
@@ -90,17 +90,17 @@ module.exports = async function(fastify, opts) {
                 if (item.quantity > availableStock) throw new Error(`Insufficient stock for ${product.productName}.`);
 
                 await trx('products').where('productId', item.productId).increment('reservedStock', item.quantity);
-                totalAmount += product.price * item.quantity;
+                // totalAmount += product.price * item.quantity;
 
                 await trx('order_items').insert({
                     orderId, productId: item.productId,
                     quantity: item.quantity, price: product.price
                 });
             }
-            if (totalAmount <= 0) throw new Error("Order total must be greater than zero.");
-            logger.info({ orderId, totalAmount }, "Platform order and items created, stock reserved.");
+            // if (totalAmount <= 0) throw new Error("Order total must be greater than zero.");
+            // logger.info({ orderId, totalAmount }, "Platform order and items created, stock reserved.");
 
-            const checkoutHash = computePerStoreCartHash({ customerId, storeId, cartItems, deliveryAddress });
+            const checkoutHash = computePerStoreCheckoutHash({ customerId, storeId, cartItems, deliveryAddress });
             await trx('customer_cart_checkouts').insert({
                 customerId, checkoutHash, platformOrderId: orderId
             });

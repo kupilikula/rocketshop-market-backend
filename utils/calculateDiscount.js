@@ -127,6 +127,7 @@ async function calculateDiscount(storeId, items, offerCodes) {
         finalQuantity: i.quantity,
         discountApplied: 0
     }));
+    console.log('itemsState:',JSON.stringify(itemsState, null, 2));
 
     for (const offer of offers) {
         // Find original items applicable to this offer to check conditions.
@@ -166,7 +167,8 @@ async function calculateDiscount(storeId, items, offerCodes) {
                 if (entry.finalQuantity > 0) { // Only apply to items with a remaining quantity.
                     const discountPerUnit = roundToTwoDecimals(entry.finalPrice * (percentage / 100));
                     const totalDiscountForItemEntry = roundToTwoDecimals(discountPerUnit * entry.finalQuantity);
-
+                    console.log('discountPerUnit:',discountPerUnit);
+                    console.log('totalDiscountForItemEntry:',totalDiscountForItemEntry);
                     discountSumForThisOffer += totalDiscountForItemEntry;
                     entry.finalPrice = roundToTwoDecimals(entry.finalPrice - discountPerUnit); // Update price for the NEXT offer.
                     entry.discountApplied = roundToTwoDecimals(entry.discountApplied + totalDiscountForItemEntry);

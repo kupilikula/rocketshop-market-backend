@@ -69,6 +69,7 @@ const evaluateFormula = (baseCost, modifiers, itemCount, orderTotalDecimal) => {
         const extraItemsCount = Math.max(0, itemCount - freeItems);
         // Calculation involves a number and a Decimal, so result is a Decimal
         const extraItemsCost = new Decimal(extraPerItemCost).times(extraItemsCount);
+        console.log("extraItemsCost", extraItemsCost);
         cost = baseCostDecimal.plus(extraItemsCost);
     } else {
         cost = baseCostDecimal.times(itemCount);

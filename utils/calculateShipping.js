@@ -71,6 +71,7 @@ const evaluateFormula = (baseCost, modifiers, itemCount, orderTotalDecimal) => {
         const extraItemsCost = new Decimal(extraPerItemCost).times(extraItemsCount);
         console.log("extraItemsCost", extraItemsCost);
         cost = baseCostDecimal.plus(extraItemsCost);
+        console.log("cost after extra items", cost);
     } else {
         cost = baseCostDecimal.times(itemCount);
     }
@@ -80,7 +81,9 @@ const evaluateFormula = (baseCost, modifiers, itemCount, orderTotalDecimal) => {
     if (modifiers.discountEnabled && orderTotalDecimal.greaterThan(discountThreshold)) {
         const discountPercentage = modifiers.discountPercentage || 0;
         const discountRate = new Decimal(100).minus(discountPercentage).div(100);
+        console.log("discountRate", discountRate);
         cost = cost.times(discountRate);
+        console.log("cost after discount", cost);
     }
 
     const capAmount = modifiers.capAmount;
